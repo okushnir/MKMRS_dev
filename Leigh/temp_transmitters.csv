@@ -1,0 +1,151 @@
+type,model,serial_number,trans_interval,protocol,acoustic_tag_id,temp_id,depth_id,sensor,freq_khz,depth_min_m,depth_max_m,m_pr_step,temp_min_c,temp_max_c,deg_pr_step,slope,intercept,est_tag_life_days,tag_turned_on_date,comments
+V,V16T-4x-069k-1,1212927,,A69-9002,A69-9002-11941,11941,,Temp,69,NA,NA,NA,-5,35,NA,-5,0.1569,1345,17/01/2017,"est tag life based on tagging date, never updated"
+V,V16T-4x-069k-1,1212928,,A69-9002,A69-9002-11942,11942,,Temp,69,NA,NA,NA,-5,35,NA,-5,0.1569,1345,24/01/2017,"est tag life based on tagging date, never updated"
+V,V16T-4x-069k-1,1212929,,A69-9002,A69-9002-11943,11943,,Temp,69,NA,NA,NA,-5,35,NA,-5,0.1569,1345,28/02/2017,"est tag life based on tagging date, never updated"
+V,V16T-4x-069k-1,1212930,,A69-9002,A69-9002-11944,11944,,Temp,69,NA,NA,NA,-5,35,NA,-5,0.1569,1345,17/02/2016,"est tag life based on tagging date, never updated"
+V,V16T-4x-069k-1,1212931,,A69-9002,A69-9002-11945,11945,,Temp,69,NA,NA,NA,-5,35,NA,-5,0.1569,1345,25/02/2016,"est tag life based on tagging date, never updated"
+T,D-HP16,1838,60,S256,10,,10,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,1825,,"Bigal original serial does not exist in shark_tagging, mistake"
+T,D-HP16,1838,62,S256,11,,11,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,1825,,"Bigal original serial does not exist in shark_tagging, mistake"
+T,ID-HP16,1838,64,R64K,5229,,,NA,69,NA,NA,NA,NA,NA,NA,NA,NA,1825,11/03/2019,Bigal original serial 1838 was 1638 in shark tagging…corrected
+T,ID-HP16,1838,66,R64K,5230,,,NA,69,NA,NA,NA,NA,NA,NA,NA,NA,1825,11/03/2019,Bigal original serial 1838 was 1638 in shark tagging…corrected
+T,ID-HP16,1838,68,R64K,5231,,,NA,69,NA,NA,NA,NA,NA,NA,NA,NA,1825,20/03/2019,Bigal original serial 1838 was 1638 in shark tagging…corrected
+T,ID-HP16,1838,70,R64K,5232,,,NA,69,NA,NA,NA,NA,NA,NA,NA,NA,1825,24/04/2019,"est tag life based on tagging date, never updated"
+T,ID-HP16,1838,72,R64K,5233,,,NA,69,NA,NA,NA,NA,NA,NA,NA,NA,1825,25/11/2019,"est tag life based on tagging date, never updated"
+T,ID-HP16,1838,74,R64K,5234,,,NA,69,NA,NA,NA,NA,NA,NA,NA,NA,1825,24/04/2019,"est tag life based on tagging date, never updated"
+T,ID-HP16,1838,76,R64K,5235,,,NA,69,NA,NA,NA,NA,NA,NA,NA,NA,1825,20/12/2020,Tag start-up on 20/12/2020
+T,ID-HP16,1838,78,R64K,5236,,,NA,69,NA,NA,NA,NA,NA,NA,NA,NA,1825,20/12/2020,Tag start-up on 20/12/2020
+T,ID-HP16,1838,80,R64K,5237,,,NA,69,NA,NA,NA,NA,NA,NA,NA,NA,1825,20/12/2020,Tag start-up on 20/12/2020
+T,ID-HP16,1838,82,R64K,5238,,,NA,69,NA,NA,NA,NA,NA,NA,NA,NA,1825,20/12/2020,Tag start-up on 20/12/2020
+T,T-HP16,1944,71,S64K,1765,1765,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,14/01/2020,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,72,S64K,1766,1766,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,15/01/2020,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,73,S64K,1767,1767,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,17/02/2020,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,74,S64K,1768,1768,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,17/02/2020,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,75,S64K,1769,1769,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,04/03/2020,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,76,S64K,1770,1770,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,13/01/2020,Tag was on between 13.01.2020-12.11.2020.
+T,T-HP16,1944,77,S64K,1771,1771,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,25/01/2021,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,78,S64K,1772,1772,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,08/02/2021,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,79,S64K,1773,1773,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,15/02/2021,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,80,S64K,1774,1774,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,10/03/2021,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,81,S64K,1775,1775,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,15/03/2021,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,82,S64K,1776,1776,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,03/05/2021,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,83,S64K,1777,1777,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,03/05/2021,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,84,S64K,1778,1778,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,25/11/2021,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,85,S64K,1779,1779,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,06/01/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,86,S64K,1780,1780,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,06/01/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,87,S64K,1781,1781,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,17/02/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,88,S64K,1782,1782,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,28/02/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,89,S64K,1783,1783,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,28/02/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,1944,90,S64K,1784,1784,,Temp,69,NA,NA,NA,0,25.5,0.1,NA,NA,2600,24/01/2023,"est tag life based on tagging date, never updated"
+T,R-HP16,1944,600,S64K,1785,1785,,Temp,69,NA,NA,NA,NA,NA,NA,NA,NA,2600,,"Not in shark_tagging, never deployed?"
+T,R-HP16,1944,603,S64K,1786,1786,,Temp,69,NA,NA,NA,NA,NA,NA,NA,NA,2600,,"Not in shark_tagging, never deployed?"
+T,R-HP16,1944,606,S64K,1787,1787,,Temp,69,NA,NA,NA,NA,NA,NA,NA,NA,2600,,"Not in shark_tagging, never deployed?"
+T,D-HP16,1714,30-90,S256,10,,10,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,14/03/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,11,,11,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,28/03/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,12,,12,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,02/04/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,13,,13,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,24/02/2019,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,14,,14,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,27/12/2017,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,15,,15,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,12/03/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,16,,16,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,27/11/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,17,,17,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,28/03/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,18,,18,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,16/12/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,19,,19,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,25/02/2019,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,20,,20,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,01/02/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,21,,21,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,27/11/2017,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,22,,22,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,27/12/2017,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,23,,23,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,12/12/2017,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,24,,24,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,20/02/2019,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,25,,25,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,12/03/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,26,,26,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,06/02/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,27,,27,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,02/04/2018,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,28,,28,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,21/01/2019,"est tag life based on tagging date, never updated"
+T,D-HP16,1714,30-90,S256,29,,29,Depth,69,0,51,0.2,NA,NA,NA,NA,NA,2600,20/02/2019,Tag was transferred between sharks.
+T,T-HP16,2125,30-90,S64K,4645,4645,,Temp,69,NA,NA,NA,10,35,0.1,NA,NA,1390,25/04/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,2125,30-90,S64K,4646,4646,,Temp,69,NA,NA,NA,10,35,0.1,NA,NA,1390,28/04/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,2125,30-90,S64K,4647,4647,,Temp,69,NA,NA,NA,10,35,0.1,NA,NA,1390,08/05/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,2125,30-90,S64K,4648,4648,,Temp,69,NA,NA,NA,10,35,0.1,NA,NA,1222,15/11/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,2125,30-90,S64K,4649,4649,,Temp,69,NA,NA,NA,10,35,0.1,NA,NA,1222,01/12/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,2125,30-90,S64K,4650,4650,,Temp,69,NA,NA,NA,10,35,0.1,NA,NA,1390,11/12/2022,"est tag life based on tagging date, never updated"
+T,T-HP16,2125,30-90,S64K,4651,4651,,Temp,69,NA,NA,NA,10,35,0.1,NA,NA,1390,01/01/2023,"est tag life based on tagging date, never updated"
+T,T-HP16,2125,30-90,S64K,4652,4652,,Temp,69,NA,NA,NA,10,35,0.1,NA,NA,1390,11/01/2023,"est tag life based on tagging date, never updated"
+T,T-HP16,2125,30-90,S64K,4653,4653,,Temp,69,NA,NA,NA,10,35,0.1,NA,NA,1390,18/01/2023,"est tag life based on tagging date, never updated"
+T,T-HP16,2125,30-90,S64K,4654,4654,,Temp,69,NA,NA,NA,10,35,0.1,NA,NA,1390,24/01/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LO,90-150,Ops,996,,996,Depth,69,0,290,,-10,50,,-10,0.1,2487,23/02/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LO,90-150,Ops,997,997,,Temp,69,0,290,,-10,50,,-100,0.1,2487,23/02/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LP,90-150,Ops,998,,998,Depth,69,0,290,,-10,50,,-10,0.1,2487,23/02/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LP,90-150,Ops,999,999,,Temp,69,0,290,,-10,50,,-100,0.1,2487,23/02/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LQ,90-150,Ops,1000,,1000,Depth,69,0,290,,-10,50,,-10,0.1,2487,23/02/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LQ,90-150,Ops,1001,1001,,Temp,69,0,290,,-10,50,,-100,0.1,2487,23/02/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LR,90-150,Ops,1002,,1002,Depth,69,0,290,,-10,50,,-10,0.1,2487,28/02/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LR,90-150,Ops,1003,1003,,Temp,69,0,290,,-10,50,,-100,0.1,2487,28/02/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LS,90-150,Ops,1004,,1004,Depth,69,0,290,,-10,50,,-10,0.1,2487,12/03/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LS,90-150,Ops,1005,1005,,Temp,69,0,290,,-10,50,,-100,0.1,2487,12/03/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LT,90-150,Ops,1006,,1006,Depth,69,0,290,,-10,50,,-10,0.1,2487,12/03/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LT,90-150,Ops,1007,1007,,Temp,69,0,290,,-10,50,,-100,0.1,2487,12/03/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LU,90-150,Ops,1008,,1008,Depth,69,0,290,,-10,50,,-10,0.1,2487,02/04/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LU,90-150,Ops,1009,1009,,Temp,69,0,290,,-10,50,,-100,0.1,2487,02/04/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LV,90-150,Ops,1010,,1010,Depth,69,0,290,,-10,50,,-10,0.1,2487,02/04/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LV,90-150,Ops,1011,1011,,Temp,69,0,290,,-10,50,,-100,0.1,2487,02/04/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LW,90-150,Ops,1012,,1012,Depth,69,0,290,,-10,50,,-10,0.1,2487,23/04/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LW,90-150,Ops,1013,1013,,Temp,69,0,290,,-10,50,,-100,0.1,2487,23/04/2023,"est tag life based on tagging date, never updated"
+T,DT-HP16,02LX,90-150,Ops,1014,,1014,Depth,69,0,290,,-10,50,,-10,0.1,2487,,"Not in shark_tagging, never deployed?"
+T,DT-HP16,02LX,90-150,Ops,1015,1015,,Temp,69,0,290,,-10,50,,-100,0.1,2487,,"Not in shark_tagging, never deployed?"
+T,DT-HP16,049N,90-150,Ops,1520,,1520,Depth,69,0,290,,-10,50,,-10,0.1,2487,11/12/2023,Tag start-up on 11/12/2023
+T,DT-HP16,049N,90-150,Ops,1521,1521,,Temp,69,0,290,,-10,50,,-100,0.1,2487,11/12/2023,Tag start-up on 11/12/2023
+T,DT-HP16,049O,90-150,Ops,1522,,1522,Depth,69,0,290,,-10,50,,-10,0.1,2487,11/12/2023,Tag start-up on 11/12/2023
+T,DT-HP16,049O,90-150,Ops,1523,1523,,Temp,69,0,290,,-10,50,,-100,0.1,2487,11/12/2023,Tag start-up on 11/12/2023
+T,DT-HP16,049P,90-150,Ops,1524,,1524,Depth,69,0,290,,-10,50,,-10,0.1,2487,11/12/2023,Tag start-up on 11/12/2023
+T,DT-HP16,049P,90-150,Ops,1525,1525,,Temp,69,0,290,,-10,50,,-100,0.1,2487,11/12/2023,Tag start-up on 11/12/2023
+T,DT-HP16,049Q,90-150,Ops,1526,,1526,Depth,69,0,290,,-10,50,,-10,0.1,2487,11/12/2023,Tag start-up on 11/12/2023
+T,DT-HP16,049Q,90-150,Ops,1527,1527,,Temp,69,0,290,,-10,50,,-100,0.1,2487,11/12/2023,Tag start-up on 11/12/2024
+T,DT-HP16,049R,90-150,Ops,1528,,1528,Depth,69,0,290,,-10,50,,-10,0.1,2487,11/12/2023,
+T,DT-HP16,049R,90-150,Ops,1529,1529,,Temp,69,0,290,,-10,50,,-100,0.1,2487,11/12/2023,Tag start-up on 11/12/2026
+T,DT-HP16,049S,90-150,Ops,1530,,1530,Depth,69,0,290,,-10,50,,-10,0.1,2487,11/12/2023,
+T,DT-HP16,049S,90-150,Ops,1531,1531,,Temp,69,0,290,,-10,50,,-100,0.1,2487,01/03/2024,Tag start-up on 01/03/2024
+T,DT-HP16,049T,90-150,Ops,1532,,1532,Depth,69,0,290,,-10,50,,-10,0.1,2487,01/03/2024,
+T,DT-HP16,049T,90-150,Ops,1533,1533,,Temp,69,0,290,,-10,50,,-100,0.1,2487,01/03/2024,Tag start-up on 01/03/2024
+T,DT-HP16,049U,90-150,Ops,1534,,1534,Depth,69,0,290,,-10,50,,-10,0.1,2487,01/03/2024,
+T,DT-HP16,049U,90-150,Ops,1535,1535,,Temp,69,0,290,,-10,50,,-100,0.1,2487,01/03/2024,Tag start-up on 01/03/2024
+T,DT-HP16,049V,90-150,Ops,1536,,1536,Depth,69,0,290,,-10,50,,-10,0.1,2487,01/03/2024,
+T,DT-HP16,049V,90-150,Ops,1537,1537,,Temp,69,0,290,,-10,50,,-100,0.1,2487,01/03/2024,Tag start-up on 01/03/2024
+T,DT-HP16,049W,90-150,Ops,1538,,1538,Depth,69,0,290,,-10,50,,-10,0.1,2487,01/03/2024,
+T,DT-HP16,049W,90-150,Ops,1539,1539,,Temp,69,0,290,,-10,50,,-100,0.1,2487,01/03/2024,
+T,DT-HP16,049X,90-150,Ops,1540,,1540,Depth,69,0,290,,-10,50,,-10,0.1,2487,01/03/2024,
+T,DT-HP16,049X,90-150,Ops,1541,1541,,Temp,69,0,290,,-10,50,,-100,0.1,2487,31/03/2024,start up 31.3.24
+T,DT-HP16,049Y,90-150,Ops,1542,,1542,Depth,69,0,290,,-10,50,,-10,0.1,2487,31/03/2024,
+T,DT-HP16,049Y,90-150,Ops,1543,1543,,Temp,69,0,290,,-10,50,,-100,0.1,2487,31/03/2024,
+T,DT-HP16,049Z,90-150,Ops,1544,,1544,Depth,69,0,290,,-10,50,,-10,0.1,2487,17/11/2024,Tag start-up on 2/4/2024 but off from 19.5.2024; ON again from 17/11/2024
+T,DT-HP16,049Z,90-150,Ops,1545,1545,,Temp,69,0,290,,-10,50,,-100,0.1,2487,17/11/2024,
+T,DT-HP16,04A0,90-150,Ops,1546,,1546,Depth,69,0,290,,-10,50,,-10,0.1,2487,17/11/2024,Tag start-up on 2/4/2024 but off from 19.5.2024; ON again from 17/11/2024
+T,DT-HP16,04A0,90-150,Ops,1547,1547,,Temp,69,0,290,,-10,50,,-100,0.1,2487,17/11/2024,
+T,DT-HP16,04A1,90-150,Ops,1548,,1548,Depth,69,0,290,,-10,50,,-10,0.1,2487,17/11/2024,LOST at sea 2.12.2024
+T,DT-HP16,04A1,90-150,Ops,1549,1549,,Temp,69,0,290,,-10,50,,-100,0.1,2487,17/11/2024,LOST at sea 2.12.2025
+T,DT-HP16,04A2,90-150,Ops,1550,,1550,Depth,69,0,290,,-10,50,,-10,0.1,2487,17/11/2024,Tag start-up on 2/4/2024 but off from 19.5.2024; ON again from 17/11/2024
+T,DT-HP16,04A2,90-150,Ops,1551,1551,,Temp,69,0,290,,-10,50,,-100,0.1,2487,17/11/2024,
+T,DT-HP16,04A3,90-150,Ops,1552,,1552,Depth,69,0,290,,-10,50,,-10,0.1,2487,4/12/2024,Tag start-up on 4/12/2024
+T,DT-HP16,04A3,90-150,Ops,1553,1553,,Temp,69,0,290,,-10,50,,-100,0.1,2487,4/12/2024,Tag start-up on 4/12/2024
+T,DT-HP16,04A4,90-150,Ops,1554,,1554,Depth,69,0,290,,-10,50,,-10,0.1,2487,4/12/2024,Tag start-up on 4/12/2024
+T,DT-HP16,04A4,90-150,Ops,1555,1555,,Temp,69,0,290,,-10,50,,-100,0.1,2487,4/12/2024,Tag start-up on 4/12/2024
+T,DT-HP16,04A5,90-150,Ops,1556,,1556,Depth,69,0,290,,-10,50,,-10,0.1,2487,4/12/2024,Tag start-up on 4/12/2024
+T,DT-HP16,04A5,90-150,Ops,1557,1557,,Temp,69,0,290,,-10,50,,-100,0.1,2487,4/12/2024,Tag start-up on 4/12/2024
+T,DT-HP16,04A6,90-150,Ops,1558,,1558,Depth,69,0,290,,-10,50,,-10,0.1,2487,4/12/2024,Tag start-up on 4/12/2024
+T,DT-HP16,04A6,90-150,Ops,1559,1559,,Temp,69,0,290,,-20,50,,-100,0.1,2487,4/12/2024,Tag start-up on 4/12/2024
+T,DT-HP16,08X0,90-150,Ops,3328,,3328,Depth,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X0,90-150,Ops,3329,3329,,Temp,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X1,90-150,Ops,3330,,3330,Depth,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X1,90-150,Ops,3331,3331,,Temp,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X2,90-150,Ops,3332,,3332,Depth,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X2,90-150,Ops,3333,3333,,Temp,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X3,90-150,Ops,3334,,3334,Depth,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X3,90-150,Ops,3335,3335,,Temp,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X4,90-150,Ops,3336,,3336,Depth,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X4,90-150,Ops,3337,3337,,Temp,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X5,90-150,Ops,3338,,3338,Depth,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X5,90-150,Ops,3339,3339,,Temp,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X6,90-150,Ops,3340,,3340,Depth,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X6,90-150,Ops,3341,3341,,Temp,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X7,90-150,Ops,3342,,3342,Depth,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X7,90-150,Ops,3343,3343,,Temp,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X8,90-150,Ops,3344,,3344,Depth,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X8,90-150,Ops,3345,3345,,Temp,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X9,90-150,Ops,3346,,3346,Depth,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
+T,DT-HP16,08X9,90-150,Ops,3347,3347,,Temp,69,0,290,,-20,50,,-100,0.1,2487,,tag not started
