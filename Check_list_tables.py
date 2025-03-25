@@ -68,8 +68,16 @@ def main():
     # print("\nExample 2:")
     # compare_table_columns(table3_columns, table4_columns)
 
-    table1 = pd.read_csv('/Users/odedkushnir/MKMRS/Chemistry/Tal/chemistry_db_ch1_sample_data.csv')
-    table2 = pd.read_csv('/Users/odedkushnir/MKMRS/Chemistry/Tal/12022025_ODV_Database_ALL_Stations_for_upload_date_modification.csv')
+    # table1 = pd.read_csv('/Users/odedkushnir/MKMRS/Chemistry/Tal/chemistry_db_ch1_sample_data.csv')
+    # table2 = pd.read_csv('/Users/odedkushnir/MKMRS/Chemistry/Tal/12022025_ODV_Database_ALL_Stations_for_upload_date_modification.csv')
+    # compare_table_columns(table1, table2)
+
+    table1 = pd.read_csv("/Users/odedkushnir/MKMRS/Chemistry/Tal/20250320_ODV_Database_ALL_Stations_modified for web upload.csv")
+    table2 = pd.read_csv("/Users/odedkushnir/MKMRS/Chemistry/Tal/20250320_ODV_Database_ALL_Stations_modified for web upload_date_modification.csv")
+    blanks_date1 = check_for_blanks_date(table1, "sample_date")
+    blanks_date2 = check_for_blanks_date(table2, "sample_date")
+    print(f'Tha table1 contain blanks date:{blanks_date1}')
+    print(f'Tha table2 contain blanks date:{blanks_date2}')
     compare_table_columns(table1, table2)
 
 if __name__ == '__main__':

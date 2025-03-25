@@ -109,9 +109,11 @@ def remove_empty_sample_date(df, column_name):
     Returns:
         pd.DataFrame: A DataFrame with empty rows removed.
     """
-
+    # df = fix_date_format(df, column_name)
     # Convert the column to string, strip spaces, and remove rows with empty or NaN values
-    df = df.fillna("")
+    df[column_name] = df[column_name].fillna("")
+    blanks_df = df[df[column_name] == ""]
+    blanks_df.to_csv('/Users/odedkushnir/MKMRS/Chemistry/Tal/20250320_ODV_Database_ALL_Stations_modified for web upload_blanks.csv', index=False)
     df = df[df[column_name] != ""]
 
     return df
@@ -122,12 +124,26 @@ def main():
     sample_df = pd.read_csv('/Users/odedkushnir/MKMRS/Chemistry/Tal/chemistry_db_ch1_sample_data.csv')
     print(sample_df["time_iso8601"])
     print("**********************")
-    df = pd.read_csv('/Users/odedkushnir/MKMRS/Chemistry/Tal/12022025_ODV_Database_ALL_Stations_for upload_Oded.csv')
+    df = pd.read_csv('/Users/odedkushnir/MKMRS/Chemistry/Tal/20250320_ODV_Database_ALL_Stations_modified for web upload.csv')
 
     # df["time_iso8601"] = df["time_iso8601"].astype(str).str.replace('T', ' ')
     # df["time_iso8601"] = pd.to_datetime(df["time_iso8601"]).dt.strftime('%Y-%m-%d %H:%M:%SZ', format="mixed")
-    # convert_to_iso8601(df, ["time_iso8601"])
     convert_to_iso8601(df, "time_iso8601")
+    # First, make sure the column is treated as a string
+    df['time_iso8601'] = df['time_iso8601'].astype(str)
+
+    # Then convert to datetime explicitly
+    df['time_iso8601_dt'] = pd.to_datetime(df['time_iso8601'])
+
+    # Now create the sample_date column (date only)
+    df['sample_date'] = df['time_iso8601_dt'].dt.date
+
+    # Create the sample_time column (HH:MM format)
+    df['sample_time'] = df['time_iso8601_dt'].dt.strftime('%H:%M')
+
+    # If you want to remove the intermediate datetime column
+    df = df.drop('time_iso8601_dt', axis=1)
+
     df["sample_date"] = pd.to_datetime(df["time_iso8601"], errors='coerce')  # Convert to datetime
     df["sample_date"] = df["sample_date"].dt.strftime('%Y/%m/%d')
     # df = df.fillna("")
@@ -148,7 +164,7 @@ def main():
     # df["time_iso8601"] = pd.to_datetime(df["time_iso8601"].dt.strftime('%Y-%m-%d'), errors='coerce')
 
     # Save the modified file
-    output_path = "/Users/odedkushnir/MKMRS/Chemistry/Tal/12022025_ODV_Database_ALL_Stations_for_upload_date_modification.csv"
+    output_path = "/Users/odedkushnir/MKMRS/Chemistry/Tal/20250320_ODV_Database_ALL_Stations_modified for web upload_date_modification.csv"
     df.to_csv(output_path, index=False)
 
 if __name__ == "__main__":

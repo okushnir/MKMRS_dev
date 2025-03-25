@@ -3,7 +3,8 @@
 @Created by: Biodaat; Oded Kushnir
 @Enhanced by: [Your Name]
 
-A script for processing shark tagging data from multiple CSV files.
+A script for processing shark CPUE (Catch Per Unit Effort) data from multiple CSV files.
+Adapted from the Tagging.py script.
 """
 import argparse
 import glob
@@ -44,6 +45,7 @@ def read_file_with_encoding(file_path):
 def extract_sections(content_lines):
     """
     Extracts sections from content marked by [SectionName] headers.
+    Also handles cases where there might not be sections but just CSV data.
 
     Args:
         content_lines (list): List of strings representing file content
@@ -79,6 +81,13 @@ def extract_sections(content_lines):
     if current_section and current_lines:
         print(f"Found section: {current_section} with {len(current_lines)} lines")
         sections[current_section] = current_lines
+
+    # If no sections found but file seems to be a CSV, create a default section
+    if not sections and len(content_lines) > 1:
+        # Check if the first line looks like CSV headers (contains commas)
+        if ',' in content_lines[0]:
+            print("No sections found, but file appears to be a CSV. Creating default CPUE section.")
+            sections["CPUE"] = content_lines
 
     return sections
 
@@ -178,12 +187,17 @@ def process_file(file_path, target_section=None, filter_column=None):
 
     Args:
         file_path (str): Path to the file
-        target_section (str): Section to extract (e.g., "Megalodon Capture")
+        target_section (str): Section to extract (e.g., "Megalodon CPUE")
         filter_column (str): Column to filter non-empty values by
 
     Returns:
         dict: Dictionary of DataFrames, with section names as keys
     """
+    # Skip files that don't likely contain CPUE data
+    file_name = os.path.basename(file_path).lower()
+    if file_name in ['cpue_dict.csv', 'cpue_list.csv']:
+        print(f"Skipping metadata file: {file_path}")
+        return {}
     print(f"Processing file: {file_path}")
     content_lines, encoding = read_file_with_encoding(file_path)
 
@@ -220,7 +234,7 @@ def process_file(file_path, target_section=None, filter_column=None):
     return dataframes
 
 
-def process_directory(directory, target_section, filter_column):
+def process_directory(directory, target_section, filter_column=None):
     """
     Process all files in a directory.
 
@@ -232,6 +246,31 @@ def process_directory(directory, target_section, filter_column):
     Returns:
         pd.DataFrame: Combined DataFrame from all files
     """
+    # First check if the directory contains our expected metadata files
+    # If so, skip them when processing
+    metadata_files = ['cpue_dict.csv', 'cpue_list.csv']
+    skipfiles = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.lower() in metadata_files:
+                skipfiles.append(os.path.join(root, file))
+                print(f"Will skip metadata file: {file}")
+
+    # If the directory only contains one CSV file that's not in our skipfiles,
+    # we can try to process it directly
+    csv_files = [f for f in glob.glob(os.path.join(directory, '*.csv')) if f not in skipfiles]
+    if len(csv_files) == 1:
+        print(f"Found a single CSV file: {csv_files[0]}")
+        # Try to read it directly with pandas
+        try:
+            df = pd.read_csv(csv_files[0])
+            df['source_file'] = os.path.basename(csv_files[0])
+            print(f"Successfully read CSV file directly: {df.shape[0]} rows, {df.shape[1]} columns")
+            return df
+        except Exception as e:
+            print(f"Error reading CSV directly: {e}")
+            # Continue with normal processing
+            pass
     combined_data = []
     processed_files = 0
 
@@ -335,6 +374,7 @@ def parse_datetime_safely(value):
         return pd.NaT
 
     formats = ['%d/%m/%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%d-%m-%Y %H:%M:%S',
+               '%d/%m/%Y %H:%M', '%Y-%m-%d %H:%M', '%d-%m-%Y %H:%M',
                '%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y']
 
     for fmt in formats:
@@ -350,24 +390,40 @@ def parse_datetime_safely(value):
         return pd.NaT
 
 
-def replace_numbers_with_yes(value):
+def split_lat_lng(df, col_name):
     """
-    Replace numeric values with "Yes".
+    Split a column containing "lat lng" format into separate latitude and longitude columns.
 
     Args:
-        value: Value to check
+        df (pd.DataFrame): DataFrame containing the column
+        col_name (str): Name of the column to split
 
     Returns:
-        "Yes" if numeric, original value otherwise
+        pd.DataFrame: Modified DataFrame with split columns
     """
-    if pd.isna(value):
-        return value
+    if col_name not in df.columns:
+        print(f"Warning: Column {col_name} not found for lat/lng splitting")
+        return df
 
-    try:
-        float(value)
-        return "Yes"
-    except (ValueError, TypeError):
-        return value
+    result_df = df.copy()
+
+    # Check if values contain spaces (indicating combined lat/long)
+    needs_splitting = result_df[col_name].astype(str).str.contains(' ').any()
+
+    if needs_splitting:
+        try:
+            # Split the column by space
+            lat_lng_split = result_df[col_name].astype(str).str.split(' ', expand=True)
+
+            # Assign to dep_lat and dep_lon
+            result_df['dep_lat'] = pd.to_numeric(lat_lng_split[0], errors='coerce')
+            result_df['dep_lon'] = pd.to_numeric(lat_lng_split[1], errors='coerce')
+
+            print(f"Successfully split {col_name} into dep_lat and dep_lon columns")
+        except Exception as e:
+            print(f"Error splitting lat/lng column: {e}")
+
+    return result_df
 
 
 def deduplicate_data(df, key_column):
@@ -419,232 +475,124 @@ def deduplicate_data(df, key_column):
 
 def main(args):
     """
-    Main function to process shark tagging data.
+    Main function to process shark CPUE data.
 
     Args:
         args: Command line arguments
     """
     delphis_dir = args.delphis_dir
-    transmitters_file = args.transmitters_unique
-    tagging_dict_file = args.tagging_dict
-    tagging_list_file = args.tagging_list
+    cpue_dict_file = args.cpue_dict
+    cpue_list_file = args.cpue_list
     output_file = args.output_file
     readonly = args.readonly
 
+    # Check if delphis_dir is actually a file instead of a directory
+    if os.path.isfile(delphis_dir):
+        print(f"Warning: {delphis_dir} is a file, not a directory.")
+        print("Processing this file directly instead of looking for files in a directory.")
+        # Create a temporary directory to hold this file
+        dirpath = "temp_dir_for_file"
+        os.makedirs(dirpath, exist_ok=True)
+        # Copy the file to the temporary directory
+        import shutil
+        shutil.copy2(delphis_dir, os.path.join(dirpath, os.path.basename(delphis_dir)))
+        # Update delphis_dir to point to this directory
+        delphis_dir = dirpath
+
     print(f"Starting processing with parameters:")
     print(f"  Delphis directory: {delphis_dir}")
-    print(f"  Transmitters file: {transmitters_file}")
-    print(f"  Tagging dictionary: {tagging_dict_file}")
-    print(f"  Tagging list: {tagging_list_file}")
+    print(f"  CPUE dictionary: {cpue_dict_file}")
+    print(f"  CPUE list: {cpue_list_file}")
     print(f"  Output file: {output_file}")
     print(f"  Readonly mode: {readonly}")
 
     # Load mapping files
     try:
-        tagging_dict_df = pd.read_csv(tagging_dict_file)
-        tagging_list_df = pd.read_csv(tagging_list_file)
+        cpue_dict_df = pd.read_csv(cpue_dict_file)
+        cpue_list_df = pd.read_csv(cpue_list_file)
 
         # Create mapping dictionary
-        column_mapping = dict(zip(tagging_dict_df.iloc[:, 0], tagging_dict_df.iloc[:, 1]))
+        column_mapping = dict(zip(cpue_dict_df.iloc[:, 0], cpue_dict_df.iloc[:, 1]))
     except Exception as e:
         print(f"Error loading mapping files: {e}")
         return
 
-    # Process directory and extract data
-    tagging_data = process_directory(delphis_dir, "Megalodon Capture", "Spagetti")
+    # Process directory and extract data - try multiple possible section names
+    section_names = ["Megalodon CPUE", "CPUE", "Megalodon Effort", "Effort"]
 
-    if tagging_data.empty:
-        print("No tagging data found. Exiting.")
+    cpue_data = pd.DataFrame()
+    for section_name in section_names:
+        print(f"Trying to find section: {section_name}")
+        data = process_directory(delphis_dir, section_name)
+        if not data.empty:
+            cpue_data = data
+            print(f"Found data in section: {section_name}")
+            break
+
+    if cpue_data.empty:
+        print("No CPUE data found in any of the expected sections. Exiting.")
         return
 
     # Map columns to expected names
-    tagging_data = map_columns(tagging_data, column_mapping)
+    cpue_data = map_columns(cpue_data, column_mapping)
 
-    # Get expected columns from tagging list
-    expected_columns = list(tagging_list_df.iloc[:, 0])
+    # Get expected columns from cpue list
+    expected_columns = list(cpue_list_df.iloc[:, 0])
 
     # Add source_file for debugging if not in expected columns
-    if 'source_file' in tagging_data.columns and 'source_file' not in expected_columns:
+    if 'source_file' in cpue_data.columns and 'source_file' not in expected_columns:
         expected_columns.append('source_file')
 
-    # Keep only columns that exist in the data
-    available_columns = [col for col in expected_columns if col in tagging_data.columns]
-    if len(available_columns) < len(expected_columns):
-        missing = set(expected_columns) - set(available_columns)
-        print(f"Warning: Missing {len(missing)} columns in data: {missing}")
+    # Process Lat Lng column if it exists
+    if 'Lat Lng' in cpue_data.columns:
+        cpue_data = split_lat_lng(cpue_data, 'Lat Lng')
 
-    # Select only the available columns
-    tagging_data = tagging_data[available_columns]
+    # Process datetime columns if they exist
+    datetime_columns = ['dep_date_time', 'col_date_time']
+    for col in datetime_columns:
+        if col in cpue_data.columns:
+            cpue_data[col] = cpue_data[col].replace(['NaN', 'None', ''], None)
+            # Convert to datetime format
+            cpue_data[col] = cpue_data[col].apply(parse_datetime_safely)
+            # Format to dd/mm/yyyy hh:mm
+            cpue_data[col] = cpue_data[col].dt.strftime('%d/%m/%Y %H:%M')
+            print(f"{col} column formatted as dd/mm/yyyy hh:mm")
 
-    # Process tag_date if available
-    if 'tag_date' in tagging_data.columns:
-        tagging_data['tag_date'] = tagging_data['tag_date'].replace(['NaN', 'None', ''], None)
-
-        # Convert to datetime format
-        tagging_data['Datetime'] = tagging_data['tag_date'].apply(parse_datetime_safely)
-
-        # Keep the original tag_date in a temporary column for later formatting
-        tagging_data['original_tag_date'] = tagging_data['tag_date']
-
-        # Update tag_date with parsed datetime values
-        tagging_data['tag_date'] = tagging_data['Datetime']
-
-        # Extract date only for grouping operations
-        tagging_data['Date'] = tagging_data['Datetime'].dt.date
-
-    # Process site column if available
-    if 'site' in tagging_data.columns:
-        tagging_data['site'] = tagging_data['site'].replace(['NaN', 'None', ''], None)
-
-        # Fill site based on date if possible
-        if 'Date' in tagging_data.columns:
-            # Group by date and forward-fill site values
-            tagging_data = tagging_data.sort_values('Date')
-            for date, group in tagging_data.groupby('Date'):
-                non_null_sites = group['site'].dropna()
-                if not non_null_sites.empty:
-                    site_value = non_null_sites.iloc[0]
-                    tagging_data.loc[tagging_data['Date'] == date, 'site'] = \
-                        tagging_data.loc[tagging_data['Date'] == date, 'site'].fillna(site_value)
-
-        # Map specific site names
-        site_mapping = {
-            'Dakar-Raphi': 'Hadera',
-            'Adva Boston': 'Ashdod Power Plant'
-        }
-
-        for old_name, new_name in site_mapping.items():
-            tagging_data.loc[tagging_data['site'] == old_name, 'site'] = new_name
-
-    # Process transmitters file
-    try:
-        # Read and clean transmitters file
-        transmitters_content, encoding = read_file_with_encoding(transmitters_file)
-
-        if transmitters_content:
-            # Create a clean file to read
-            temp_file = "temp_transmitters.csv"
-            with open(temp_file, 'w', encoding='utf-8') as f:
-                f.write(''.join(transmitters_content))
-
-            # Read the cleaned file
-            transmitters = pd.read_csv(temp_file)
-
-            # Required columns
-            required_cols = ["serial_number", "temp_id", "depth_id", "protocol",
-                             "est_tag_life_days", "tag_turned_on_date"]
-
-            # Check which required columns exist
-            available_cols = [col for col in required_cols if col in transmitters.columns]
-
-            if available_cols:
-                # Select only available columns
-                transmitters = transmitters[available_cols]
-
-                # Process dates if available
-                if "tag_turned_on_date" in transmitters.columns:
-                    transmitters["tag_turned_on_date"] = pd.to_datetime(
-                        transmitters["tag_turned_on_date"],
-                        dayfirst=True,
-                        errors='coerce'
-                    )
-
-                    if "est_tag_life_days" in transmitters.columns:
-                        transmitters["acoustic_tag_removed_date"] = \
-                            transmitters["tag_turned_on_date"] + \
-                            pd.to_timedelta(transmitters["est_tag_life_days"], unit='days')
-
-                # Rename serial_number to match tagging data
-                if "serial_number" in transmitters.columns:
-                    transmitters = transmitters.rename(columns={"serial_number": "acoustic_tag_serial"})
-
-                    # Merge with tagging data if possible
-                    if "acoustic_tag_serial" in tagging_data.columns:
-                        tagging_data = tagging_data.merge(
-                            transmitters,
-                            on="acoustic_tag_serial",
-                            how="left"
-                        )
-
-            # Clean up temp file
-            if os.path.exists(temp_file) and not readonly:
-                os.remove(temp_file)
-    except Exception as e:
-        print(f"Error processing transmitters file: {e}")
-
-    # Handle special columns
-    boolean_columns = ["blood", "skin_mb", "cloaca_mb", "gills_mb",
-                       "water_mb", "wound_mb", "catcam", "ultrasound_device"]
-
-    for col in boolean_columns:
-        if col in tagging_data.columns:
-            tagging_data[col] = tagging_data[col].apply(replace_numbers_with_yes)
-
-    # Handle longitude/latitude splitting
-    if "longitude" in tagging_data.columns:
-        # Check if values contain spaces (indicating combined lat/long)
-        needs_splitting = tagging_data['longitude'].astype(str).str.contains(' ').any()
-
-        if needs_splitting:
-            try:
-                tagging_data[['latitude', 'longitude']] = \
-                    tagging_data['longitude'].astype(str).str.split(' ', expand=True)
-                print("Split longitude column into latitude and longitude")
-            except Exception as e:
-                print(f"Error splitting longitude column: {e}")
-
-    # Filter out NA visual tags
-    if "visual_tag" in tagging_data.columns:
-        before_count = len(tagging_data)
-        tagging_data = tagging_data[tagging_data["visual_tag"].astype(str) != "NA"]
-        tagging_data = tagging_data.dropna(subset=["visual_tag"])
-        after_count = len(tagging_data)
-
-        if before_count > after_count:
-            print(f"Removed {before_count - after_count} rows with NA or empty visual_tag")
-
+    # Process visual_tag if available
+    if "visual_tag" in cpue_data.columns:
         # Convert visual_tag to integer if possible
         try:
-            tagging_data["visual_tag"] = tagging_data["visual_tag"].astype(int)
+            cpue_data["visual_tag"] = pd.to_numeric(cpue_data["visual_tag"], errors='coerce')
+            cpue_data["visual_tag"] = cpue_data["visual_tag"].fillna(0).astype(int)
             print("Successfully converted visual_tag to integer")
         except Exception as e:
             print(f"Warning: Could not convert visual_tag to integer: {e}")
 
-    # Remove duplicates
-    if "visual_tag" in tagging_data.columns:
-        tagging_data = deduplicate_data(tagging_data, "visual_tag")
+        # Remove duplicates based on visual_tag if it exists
+        cpue_data = deduplicate_data(cpue_data, "visual_tag")
 
         # Sort by visual_tag
-        tagging_data = tagging_data.sort_values(by="visual_tag")
+        cpue_data = cpue_data.sort_values(by="visual_tag")
 
-    # Prepare final output
-    output_columns = list(tagging_list_df.iloc[:, 0])
-    available_output_cols = [col for col in output_columns if col in tagging_data.columns]
+    # Ensure all expected columns exist in the dataframe
+    for col in expected_columns:
+        if col not in cpue_data.columns:
+            cpue_data[col] = None
+            print(f"Added missing column: {col}")
 
-    if len(available_output_cols) < len(output_columns):
-        missing = set(output_columns) - set(available_output_cols)
+    # Select only the columns in the expected order
+    available_output_cols = [col for col in expected_columns if col in cpue_data.columns]
+
+    if len(available_output_cols) < len(expected_columns):
+        missing = set(expected_columns) - set(available_output_cols)
         print(f"Warning: {len(missing)} columns missing in final output: {missing}")
 
-    final_table = tagging_data[available_output_cols].copy()
-
-    # Format tag_date before saving
-    if 'tag_date' in final_table.columns:
-        try:
-            # First ensure tag_date is in datetime format
-            if not pd.api.types.is_datetime64_any_dtype(final_table['tag_date']):
-                # If tag_date is still a string, convert it to datetime
-                final_table['tag_date'] = final_table['tag_date'].apply(parse_datetime_safely)
-
-            # Format to dd/mm/yyyy hh:mm
-            final_table['tag_date'] = final_table['tag_date'].dt.strftime('%d/%m/%Y %H:%M')
-            print("tag_date column formatted as dd/mm/yyyy hh:mm")
-        except Exception as e:
-            print(f"Warning: Could not format tag_date column: {e}")
+    final_table = cpue_data[available_output_cols].copy()
 
     # Save to file
     if not final_table.empty:
         try:
-            final_table.to_csv(output_file, index=False, float_format='%.0f')
+            final_table.to_csv(output_file, index=False, float_format='%.6f')
             print(f"Successfully saved {len(final_table)} rows to {output_file}")
         except Exception as e:
             print(f"Error saving output file: {e}")
@@ -653,11 +601,10 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process shark tagging data")
+    parser = argparse.ArgumentParser(description="Process shark CPUE data")
     parser.add_argument("delphis_dir", type=str, help="Path to directory with Delphis files")
-    parser.add_argument("transmitters_unique", type=str, help="Path to transmitters file")
-    parser.add_argument("tagging_dict", type=str, help="Path to column mapping dictionary file")
-    parser.add_argument("tagging_list", type=str, help="Path to output column list file")
+    parser.add_argument("cpue_dict", type=str, help="Path to column mapping dictionary file")
+    parser.add_argument("cpue_list", type=str, help="Path to output column list file")
     parser.add_argument("output_file", type=str, help="Path to output file")
     parser.add_argument("--readonly", action="store_true", help="Do not modify input files")
 
