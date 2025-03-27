@@ -1,0 +1,5 @@
+dep_date_time,dep_lat,dep_lon,dep_drumline_number,dep_bait,dep_bait_on_off,dep_longline_bottom_surface,dep_bottom_salinity,dep_bottom_temperature,dep_sea_surface_salinity,dep_sea_surface_temperature,dep_handline_anchoring_motoring,comments
+25/11/2021 15:22,32.46095876,34.88101987,1.0,Mackerel;,Bait Off,,38.1,26.7,33.4,26.5,,
+25/11/2021 15:30,32.45974376,34.88059206,2.0,Mackerel;,Bait Off,,38.5,26.6,38.3,26.6,,
+25/11/2021 15:42,32.45859216,34.88013395,3.0,Mackerel;,Bait On,,38.8,26.5,38.5,26.2,,
+25/11/2021 15:51,32.45787699,34.87985548,4.0,Mackerel;,,,39.0,26.6,38.5,26.0,,

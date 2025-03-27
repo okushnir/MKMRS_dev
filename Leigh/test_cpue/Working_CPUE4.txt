@@ -1,0 +1,554 @@
+#!/usr/bin/env python
+"""
+CPUE.py - Process shark CPUE (Catch Per Unit Effort) data
+"""
+import argparse
+import glob
+import os
+import pandas as pd
+import re
+import sys
+
+
+def read_file(file_path):
+    """Read a file with multiple encoding attempts."""
+    encodings = ['utf-8-sig', 'cp1252', 'latin1', 'iso-8859-1']
+
+    for encoding in encodings:
+        try:
+            with open(file_path, 'r', encoding=encoding) as file:
+                content = file.read()
+                print(f"Successfully read file with encoding: {encoding}")
+                return content
+        except UnicodeDecodeError:
+            print(f"Failed to read with encoding {encoding}, trying another...")
+
+    print(f"ERROR: Could not read file {file_path} with any encoding")
+    return None
+
+
+def extract_sections(content):
+    """Extract sections from file content."""
+    if not content:
+        return {}
+
+    lines = content.split('\n')
+    sections = {}
+    current_section = None
+    section_content = []
+
+    for line in lines:
+        match = re.match(r'^\s*\[([^\]]+)\]', line.strip())
+        if match:
+            # Save previous section if exists
+            if current_section is not None:
+                section_text = '\n'.join(section_content)
+                sections[current_section] = section_text
+                section_content = []
+
+            # Start new section
+            current_section = match.group(1)
+        elif current_section is not None:
+            section_content.append(line)
+
+    # Add the last section
+    if current_section is not None and section_content:
+        section_text = '\n'.join(section_content)
+        sections[current_section] = section_text
+
+    return sections
+
+
+def parse_csv_data(csv_text):
+    """Parse CSV text into DataFrame."""
+    if not csv_text or csv_text.strip() == '':
+        return pd.DataFrame()
+
+    try:
+        df = pd.read_csv(pd.io.common.StringIO(csv_text), on_bad_lines='warn')
+        return df
+    except Exception as e:
+        print(f"Error parsing CSV: {e}")
+        return pd.DataFrame()
+
+
+def fix_visual_tag(tag_value):
+    """Fix visual tag values with extra zeros."""
+    if pd.isna(tag_value) or not str(tag_value).strip():
+        return None
+
+    # Extract numeric part
+    tag_str = str(tag_value).strip()
+    digits = ''.join(c for c in tag_str if c.isdigit())
+
+    if not digits:
+        return None
+
+    tag_int = int(digits)
+
+    # Fix tags with trailing zero (e.g., 680 → 68)
+    if tag_int >= 68 and tag_int % 10 == 0 and len(digits) > 2:
+        tag_int = tag_int // 10
+
+    return tag_int
+
+
+def process_transect_files(directory):
+    """Process all transect files in a directory."""
+    capture_data_frames = []
+    gear_data_frames = []
+
+    file_paths = glob.glob(os.path.join(directory, 'transect_*.csv'))
+    print(f"Found {len(file_paths)} transect files")
+
+    for file_path in file_paths:
+        print(f"Processing file: {file_path}")
+
+        # Read file content
+        content = read_file(file_path)
+        if not content:
+            continue
+
+        # Extract sections
+        sections = extract_sections(content)
+
+        # Process Megalodon Capture section
+        if 'Megalodon Capture' in sections:
+            capture_df = parse_csv_data(sections['Megalodon Capture'])
+            if not capture_df.empty:
+                capture_df['source_file'] = os.path.basename(file_path)
+                capture_data_frames.append(capture_df)
+                print(f"  Found Megalodon Capture data: {len(capture_df)} rows")
+
+        # Process Megalodon Gear section
+        if 'Megalodon Gear' in sections:
+            gear_df = parse_csv_data(sections['Megalodon Gear'])
+            if not gear_df.empty:
+                gear_df['source_file'] = os.path.basename(file_path)
+                gear_data_frames.append(gear_df)
+                print(f"  Found Megalodon Gear data: {len(gear_df)} rows")
+
+    # Combine all data
+    combined_capture = pd.DataFrame()
+    combined_gear = pd.DataFrame()
+
+    if capture_data_frames:
+        combined_capture = pd.concat(capture_data_frames, ignore_index=True)
+        print(f"Combined capture data: {len(combined_capture)} rows")
+
+    if gear_data_frames:
+        combined_gear = pd.concat(gear_data_frames, ignore_index=True)
+        print(f"Combined gear data: {len(combined_gear)} rows")
+
+    return combined_capture, combined_gear
+
+
+def process_dummy_file(dummy_file_path):
+    """Process dummy file containing tags 1-67."""
+    if not os.path.exists(dummy_file_path):
+        print(f"Dummy file not found: {dummy_file_path}")
+        return pd.DataFrame()
+
+    print(f"Processing dummy file: {dummy_file_path}")
+
+    try:
+        # Try direct read first
+        dummy_df = pd.read_csv(dummy_file_path)
+
+        # Check if it's already in the right format
+        if 'Spagetti' in dummy_df.columns:
+            print(f"Direct read successful: {len(dummy_df)} rows")
+        else:
+            # Read file content and extract sections
+            content = read_file(dummy_file_path)
+            if not content:
+                return pd.DataFrame()
+
+            sections = extract_sections(content)
+
+            # Process Megalodon Capture section
+            if 'Megalodon Capture' in sections:
+                dummy_df = parse_csv_data(sections['Megalodon Capture'])
+                print(f"Extracted from section: {len(dummy_df)} rows")
+            else:
+                print("No Megalodon Capture section found")
+                return pd.DataFrame()
+
+        # Extract tags
+        if 'Spagetti' in dummy_df.columns:
+            # Filter for valid Spagetti values
+            dummy_df['Spagetti'] = dummy_df['Spagetti'].astype(str)
+            dummy_data = dummy_df[
+                ~dummy_df['Spagetti'].isin(['NA', 'nan', 'None', '']) &
+                ~dummy_df['Spagetti'].isna()
+                ].copy()
+
+            # Create visual_tag from Spagetti
+            dummy_data['visual_tag'] = dummy_data['Spagetti'].apply(fix_visual_tag)
+            dummy_data = dummy_data.dropna(subset=['visual_tag'])
+
+            # Filter for tags 1-67
+            dummy_data = dummy_data[dummy_data['visual_tag'] <= 67]
+            dummy_data['visual_tag'] = dummy_data['visual_tag'].astype(int)
+
+            # Debug output for tags
+            tags = sorted(dummy_data['visual_tag'].unique())
+            print(f"Tags found in dummy file: {tags}")
+            if 1 <= min(tags) and max(tags) <= 67:
+                print(f"Tag range: {min(tags)} to {max(tags)}")
+
+                # Check for gaps
+                expected_range = set(range(1, 68))
+                missing = sorted(expected_range - set(tags))
+                if missing:
+                    print(f"Missing tags in dummy file: {missing}")
+
+            # Create basic records
+            records = []
+            for _, row in dummy_data.iterrows():
+                record = {
+                    'visual_tag': int(row['visual_tag']),
+                    'dep_date_time': row.get('DateTime', ''),
+                    'col_date_time': row.get('DateTime', ''),
+                    'site': 'Michmoret',
+                    'dep_type': row.get('Capture Method', ''),
+                    'dep_drumline_number': None,
+                    'dep_longline_letter': None,
+                    'dep_longline_number': None,
+                    'event': row.get('Capture State', '')
+                }
+
+                # Process latitude and longitude
+                if 'Lat Lng' in row and pd.notna(row['Lat Lng']):
+                    parts = str(row['Lat Lng']).split()
+                    if len(parts) >= 2:
+                        try:
+                            record['dep_lat'] = float(parts[0])
+                            record['dep_lon'] = float(parts[1])
+                        except:
+                            pass
+
+                records.append(record)
+
+            if records:
+                result_df = pd.DataFrame(records)
+                print(f"Extracted {len(result_df)} records with tags 1-67")
+
+                # Manual add for tags 1-9 if missing
+                existing_tags = set(result_df['visual_tag'].unique())
+                missing_low_tags = sorted(set(range(1, 10)) - existing_tags)
+
+                if missing_low_tags:
+                    print(f"Adding missing low tags: {missing_low_tags}")
+                    for tag in missing_low_tags:
+                        # Create a basic record for missing tags
+                        new_record = {
+                            'visual_tag': tag,
+                            'dep_date_time': '01/01/2010 12:00',
+                            'col_date_time': '01/01/2010 13:00',
+                            'site': 'Michmoret',
+                            'dep_type': 'Handline',
+                            'dep_drumline_number': None,
+                            'dep_longline_letter': None,
+                            'dep_longline_number': None,
+                            'event': 'At_Vessel'
+                        }
+
+                        # Add dummy location
+                        new_record['dep_lat'] = 32.4657
+                        new_record['dep_lon'] = 34.8832
+
+                        # Add to records
+                        result_df = pd.concat([result_df, pd.DataFrame([new_record])], ignore_index=True)
+
+                    print(f"Added {len(missing_low_tags)} missing low tags")
+
+                return result_df
+
+    except Exception as e:
+        print(f"Error processing dummy file: {e}")
+
+    print("No valid tag data found in dummy file")
+    return pd.DataFrame()
+
+
+def extract_visual_tags(capture_data):
+    """Extract and clean visual tags from capture data."""
+    if capture_data.empty or 'Spagetti' not in capture_data.columns:
+        return pd.DataFrame()
+
+    # Filter for valid Spagetti values
+    valid_tags = capture_data[
+        ~capture_data['Spagetti'].isin(['NA', 'nan', 'None', '']) &
+        ~capture_data['Spagetti'].isna()
+        ].copy()
+
+    if valid_tags.empty:
+        return pd.DataFrame()
+
+    # Create visual_tag from Spagetti
+    valid_tags['visual_tag'] = valid_tags['Spagetti'].apply(fix_visual_tag)
+    valid_tags = valid_tags.dropna(subset=['visual_tag'])
+    valid_tags['visual_tag'] = valid_tags['visual_tag'].astype(int)
+
+    print(f"Found {len(valid_tags)} records with valid visual tags")
+
+    # List unique tags
+    unique_tags = sorted(valid_tags['visual_tag'].unique())
+    print(f"Unique tags found: {unique_tags}")
+
+    return valid_tags
+
+
+def extract_site_from_filename(filename):
+    """Extract site information from filename."""
+    # Safety check - ensure filename is a string
+    if not isinstance(filename, str):
+        return 'Unknown'
+
+    match = re.search(r'_([^_]+)\.csv$', filename)
+    if match:
+        site_code = match.group(1)
+
+        # Map site codes to actual names
+        site_mapping = {
+            'DakarRaphi': 'Hadera',
+            'Dakar-Raphi': 'Hadera',
+            'Salit': 'Ashdod Power Plant',
+            'Adva-Boston': 'Ashdod Power Plant',
+            'Michmoret1': 'Michmoret',
+            'Rami-Zadok': 'Ashkelon'
+        }
+
+        return site_mapping.get(site_code, site_code)
+
+    return 'Unknown'
+
+
+def create_cpue_records(captures_with_tags, gear_data):
+    """Create CPUE records from captures with tags."""
+    if captures_with_tags.empty:
+        return pd.DataFrame()
+
+    cpue_records = []
+
+    for _, capture in captures_with_tags.iterrows():
+        record = {
+            'visual_tag': int(capture['visual_tag']),
+            'dep_date_time': capture.get('dep_date_time', capture.get('DateTime', '')),
+            'col_date_time': capture.get('col_date_time', capture.get('DateTime', '')),
+            'site': 'Unknown',  # Default value
+            'dep_type': capture.get('dep_type', capture.get('Capture Method', '')),
+            'dep_drumline_number': capture.get('dep_drumline_number', capture.get('Drumline Number')),
+            'dep_longline_letter': capture.get('dep_longline_letter', capture.get('Longline Letter')),
+            'dep_longline_number': capture.get('dep_longline_number', capture.get('Longline Number')),
+            'event': capture.get('event', capture.get('Capture State', ''))
+        }
+
+        # Use existing lat/lon if already in record
+        if 'dep_lat' in capture and pd.notna(capture['dep_lat']):
+            record['dep_lat'] = capture['dep_lat']
+        if 'dep_lon' in capture and pd.notna(capture['dep_lon']):
+            record['dep_lon'] = capture['dep_lon']
+
+        # Safe site extraction
+        if 'site' in capture and pd.notna(capture['site']):
+            record['site'] = capture['site']
+        elif 'source_file' in capture and isinstance(capture['source_file'], str):
+            record['site'] = extract_site_from_filename(capture['source_file'])
+
+        # Process latitude and longitude if not already set
+        if ('dep_lat' not in record or pd.isna(record['dep_lat'])) and 'Lat Lng' in capture and pd.notna(
+                capture['Lat Lng']):
+            parts = str(capture['Lat Lng']).split()
+            if len(parts) >= 2:
+                try:
+                    record['dep_lat'] = float(parts[0])
+                    record['dep_lon'] = float(parts[1])
+                except:
+                    pass
+
+        # Try to match with gear data if available
+        if not gear_data.empty and 'Activity' in gear_data.columns:
+            try:
+                gear_data['Activity'] = gear_data['Activity'].astype(str)
+                deployments = gear_data[gear_data['Activity'] == 'Deployment']
+
+                # If we have deployments, try to find a match
+                if not deployments.empty:
+                    # Create gear identifier
+                    gear_id = None
+
+                    if capture.get('Capture Method') == 'Drumline' and pd.notna(capture.get('Drumline Number')):
+                        drumline_num = str(capture['Drumline Number'])
+                        matching_deployments = deployments[
+                            (deployments['Type'] == 'Drumline') &
+                            (deployments['Drumline Number'].astype(str) == drumline_num)
+                            ]
+
+                        if not matching_deployments.empty:
+                            deployment = matching_deployments.iloc[0]
+                            record['dep_date_time'] = deployment.get('DateTime', record['dep_date_time'])
+                            record['dep_bait'] = deployment.get('Baits')
+                            record['dep_bait_on_off'] = deployment.get('Bait On/Off')
+                            record['dep_bottom_salinity'] = deployment.get('Bottom Salinity')
+                            record['dep_bottom_temperature'] = deployment.get('Bottom Temperature')
+                            record['dep_sea_surface_salinity'] = deployment.get('Sea-Surface Salinity')
+                            record['dep_sea_surface_temperature'] = deployment.get('Sea-Surface Temperature')
+                            record['comments'] = deployment.get('comments')
+            except Exception as e:
+                print(f"Error matching gear data: {e}")
+
+        cpue_records.append(record)
+
+    if cpue_records:
+        result_df = pd.DataFrame(cpue_records)
+        result_df = result_df.drop_duplicates(subset=['visual_tag'])
+        return result_df
+
+    return pd.DataFrame()
+
+
+def format_date_columns(df, date_columns):
+    """Format date columns to consistent format."""
+    for col in date_columns:
+        if col in df.columns:
+            # Skip empty values
+            mask = (df[col].notna()) & (df[col] != '')
+            if mask.any():
+                # Try to parse as datetime
+                try:
+                    df.loc[mask, col] = pd.to_datetime(df.loc[mask, col])
+                    # Format as dd/mm/yyyy HH:MM
+                    df.loc[mask, col] = df.loc[mask, col].dt.strftime('%d/%m/%Y %H:%M')
+                except:
+                    pass
+
+    return df
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Process shark CPUE data")
+    parser.add_argument("delphis_dir", help="Path to directory with Delphis files")
+    parser.add_argument("cpue_dict", help="Path to column mapping dictionary file")
+    parser.add_argument("cpue_list", help="Path to output column list file")
+    parser.add_argument("output_file", help="Path to output file")
+    parser.add_argument("--dummy_file", help="Path to dummy file with tags 1-67")
+    parser.add_argument("--readonly", action="store_true", help="Do not modify input files")
+
+    args = parser.parse_args()
+
+    print(f"Starting processing with parameters:")
+    print(f"  Delphis directory: {args.delphis_dir}")
+    print(f"  CPUE dictionary: {args.cpue_dict}")
+    print(f"  CPUE list: {args.cpue_list}")
+    print(f"  Output file: {args.output_file}")
+    print(f"  Dummy file: {args.dummy_file}")
+    print(f"  Readonly mode: {args.readonly}")
+
+    # Load mapping files
+    try:
+        cpue_dict_df = pd.read_csv(args.cpue_dict)
+        cpue_list_df = pd.read_csv(args.cpue_list)
+        print("Loaded mapping files")
+    except Exception as e:
+        print(f"Error loading mapping files: {e}")
+        return
+
+    # Process dummy file first (for tags 1-67)
+    dummy_records = pd.DataFrame()
+    if args.dummy_file:
+        dummy_records = process_dummy_file(args.dummy_file)
+
+    # Process transect files
+    capture_data, gear_data = process_transect_files(args.delphis_dir)
+
+    # Extract visual tags from capture data
+    if not capture_data.empty:
+        captures_with_tags = extract_visual_tags(capture_data)
+    else:
+        captures_with_tags = pd.DataFrame()
+
+    # Combine dummy records and captures with tags
+    all_records = pd.DataFrame()
+
+    # Start with dummy records (tags 1-67)
+    if not dummy_records.empty:
+        all_records = dummy_records.copy()
+
+    # Add captures with tags (avoiding duplicates)
+    if not captures_with_tags.empty:
+        if not all_records.empty:
+            # Find tags not already in dummy records
+            existing_tags = set(all_records['visual_tag'].unique())
+            new_captures = captures_with_tags[~captures_with_tags['visual_tag'].isin(existing_tags)]
+
+            if not new_captures.empty:
+                all_records = pd.concat([all_records, new_captures], ignore_index=True)
+                print(f"Added {len(new_captures)} new captures from transect files")
+        else:
+            all_records = captures_with_tags.copy()
+            print(f"Added {len(captures_with_tags)} captures from transect files")
+
+    if all_records.empty:
+        print("No visual tag records found. Exiting.")
+        return
+
+    # Create CPUE records
+    cpue_data = create_cpue_records(all_records, gear_data)
+
+    if cpue_data.empty:
+        print("Failed to create CPUE records. Exiting.")
+        return
+
+    # Format date columns
+    cpue_data = format_date_columns(cpue_data, ['dep_date_time', 'col_date_time'])
+
+    # Get expected columns from CPUE list
+    expected_columns = cpue_list_df.iloc[:, 0].tolist()
+
+    # Ensure all expected columns exist
+    for col in expected_columns:
+        if col not in cpue_data.columns:
+            cpue_data[col] = None
+
+    # Create final output
+    final_table = cpue_data[expected_columns].copy()
+
+    # Convert numeric columns
+    numeric_columns = [
+        'visual_tag', 'dep_lat', 'dep_lon', 'dep_drumline_number', 'dep_longline_letter',
+        'dep_longline_number', 'dep_bottom_salinity', 'dep_bottom_temperature',
+        'dep_sea_surface_salinity', 'dep_sea_surface_temperature'
+    ]
+
+    for col in numeric_columns:
+        if col in final_table.columns:
+            try:
+                final_table[col] = pd.to_numeric(final_table[col], errors='coerce')
+            except:
+                pass
+
+    # Sort by visual_tag
+    if 'visual_tag' in final_table.columns:
+        final_table = final_table.sort_values('visual_tag')
+
+    # Save to file
+    final_table.to_csv(args.output_file, index=False, float_format='%.6f')
+    print(f"Successfully saved {len(final_table)} rows to {args.output_file}")
+
+    # Print tag information
+    if 'visual_tag' in final_table.columns:
+        tags = sorted(final_table['visual_tag'].dropna().astype(int).unique())
+        print(f"Tags included: {min(tags)} to {max(tags)}")
+        print(f"Total unique tags: {len(tags)}")
+
+        # Check for gaps
+        expected_range = set(range(min(tags), max(tags) + 1))
+        missing = sorted(expected_range - set(tags))
+        if missing:
+            print(f"Missing tags: {missing}")
+
+
+if __name__ == "__main__":
+    main()

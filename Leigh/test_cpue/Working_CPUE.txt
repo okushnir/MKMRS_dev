@@ -1,0 +1,608 @@
+#!/usr/bin/env python
+"""
+@Created by: Based on Biodaat's Tagging.py by Oded Kushnir
+@Enhanced by: [Your Name]
+
+A script for processing shark CPUE (Catch Per Unit Effort) data from multiple CSV files.
+"""
+import argparse
+import glob
+import os
+import pandas as pd
+import re
+import sys
+
+
+def read_file_with_encoding(file_path):
+    """
+    Reads a file trying multiple encodings until one works.
+
+    Args:
+        file_path (str): Path to the file to read
+
+    Returns:
+        tuple: (content_lines, encoding_used) or (None, None) if all fail
+    """
+    # Try these encodings in order
+    encodings = ['utf-8-sig', 'cp1252', 'latin1', 'iso-8859-1']
+
+    for encoding in encodings:
+        try:
+            with open(file_path, "r", encoding=encoding) as file:
+                content = file.readlines()
+                print(f"Successfully read file with encoding: {encoding}")
+                return content, encoding
+        except UnicodeDecodeError:
+            print(f"Failed to read with encoding {encoding}, trying another...")
+
+    # If all encodings fail
+    print(f"ERROR: Could not read file {file_path} with any encoding")
+    return None, None
+
+
+def find_sections(content_lines):
+    """
+    Find sections in CSV content marked by [SectionName] headers.
+
+    Args:
+        content_lines (list): List of strings representing file content
+
+    Returns:
+        dict: Dictionary with section names as keys and lists of line indices as values
+    """
+    sections = {}
+    current_section = None
+
+    for i, line in enumerate(content_lines):
+        line_stripped = line.strip()
+
+        # Check if this line contains a section marker at the beginning
+        section_match = re.match(r"^\[([^\]]+)\]", line_stripped)
+        if section_match:
+            # Store section name and start index
+            section_name = section_match.group(1)
+            if section_name not in sections:
+                sections[section_name] = {"start": i, "end": None}
+
+            # If we were in a section before, mark its end
+            if current_section and current_section != section_name:
+                if sections[current_section]["end"] is None:
+                    sections[current_section]["end"] = i - 1
+
+            current_section = section_name
+
+    # Mark the end of the last section
+    if current_section and sections[current_section]["end"] is None:
+        sections[current_section]["end"] = len(content_lines) - 1
+
+    # Check for empty sections and print summary
+    for section_name, indices in sections.items():
+        data_length = indices["end"] - indices["start"]
+        if data_length <= 1:  # Only header or empty
+            print(f"Warning: Section {section_name} appears to be empty")
+        else:
+            print(f"Found section: {section_name} with {data_length} lines")
+
+    return sections
+
+
+def parse_section_to_dataframe(content_lines, section_start, section_end):
+    """
+    Parse a section of CSV content into a DataFrame.
+
+    Args:
+        content_lines (list): List of strings with file content
+        section_start (int): Start line index of the section
+        section_end (int): End line index of the section
+
+    Returns:
+        pd.DataFrame: DataFrame containing the parsed data
+    """
+    # Skip the section header and get just the data lines
+    data_lines = content_lines[section_start + 1:section_end + 1]
+
+    # Skip empty lines
+    data_lines = [line for line in data_lines if line.strip()]
+
+    if not data_lines:
+        return pd.DataFrame()
+
+    # Create a single string with newlines for pandas to parse
+    csv_content = "".join(data_lines)
+
+    try:
+        # Try to parse with pandas
+        df = pd.read_csv(
+            pd.io.common.StringIO(csv_content),
+            skip_blank_lines=True
+        )
+
+        # Clean up column names
+        df.columns = [str(col).strip() for col in df.columns]
+
+        # Handle unnamed columns
+        unnamed_cols = [col for col in df.columns if 'Unnamed:' in str(col)]
+        if unnamed_cols:
+            rename_dict = {col: f"column_{i}" for i, col in enumerate(unnamed_cols)}
+            df = df.rename(columns=rename_dict)
+
+        return df
+    except Exception as e:
+        print(f"Error parsing section: {e}")
+        return pd.DataFrame()
+
+
+def process_file(file_path):
+    """
+    Process a single file, extracting relevant sections.
+
+    Args:
+        file_path (str): Path to the file
+
+    Returns:
+        dict: Dictionary of DataFrames, with section names as keys
+    """
+    print(f"Processing file: {file_path}")
+    filename = os.path.basename(file_path)
+    content_lines, encoding = read_file_with_encoding(file_path)
+
+    if not content_lines:
+        return {}
+
+    # Find sections in the file
+    sections = find_sections(content_lines)
+
+    # Parse sections into DataFrames
+    dataframes = {}
+    for section_name, indices in sections.items():
+        df = parse_section_to_dataframe(content_lines, indices["start"], indices["end"])
+
+        if not df.empty:
+            # Add source file information
+            df['source_file'] = filename
+
+            # Add to dictionary
+            dataframes[section_name] = df
+            print(f"  Parsed {section_name}: {df.shape[0]} rows, {df.shape[1]} columns")
+
+    return dataframes
+
+
+def process_directory(directory):
+    """
+    Process all files in a directory.
+
+    Args:
+        directory (str): Directory path containing files to process
+
+    Returns:
+        dict: Dictionary containing dataframes for each section type
+    """
+    sections_data = {
+        "Megalodon Gear": [],
+        "Megalodon Capture": []
+    }
+
+    # List all transect files in the directory
+    file_paths = glob.glob(os.path.join(directory, 'transect_*.csv'))
+    print(f"Found {len(file_paths)} transect files in directory")
+
+    processed_files = 0
+    for file_path in file_paths:
+        # Skip directories
+        if os.path.isdir(file_path):
+            continue
+
+        # Process the file
+        dataframes = process_file(file_path)
+
+        # Store relevant sections
+        for section_name in sections_data:
+            if section_name in dataframes:
+                sections_data[section_name].append(dataframes[section_name])
+
+        processed_files += 1
+
+    # Combine all the data for each section type
+    combined_data = {}
+    for section_name, dataframes in sections_data.items():
+        if dataframes:
+            try:
+                combined_df = pd.concat(dataframes, ignore_index=True)
+                print(f"Combined {section_name} data from {len(dataframes)} files: {combined_df.shape[0]} rows")
+                combined_data[section_name] = combined_df
+            except Exception as e:
+                print(f"Error combining {section_name} data: {e}")
+
+    print(f"Processed {processed_files} files")
+    return combined_data
+
+
+def extract_site_from_filename(filename):
+    """
+    Extract site information from filename.
+
+    Args:
+        filename (str): The source filename
+
+    Returns:
+        str: Extracted site name
+    """
+    # Extract site part from filename (assuming format like transect_YYYYMMDD_Other_DakarRaphi.csv)
+    match = re.search(r'_([^_]+)\.csv$', filename)
+    if match:
+        site_code = match.group(1)
+
+        # Map site codes to actual names
+        site_mapping = {
+            'DakarRaphi': 'Hadera',
+            'Salit': 'Ashdod Power Plant'
+        }
+
+        return site_mapping.get(site_code, site_code)
+
+    return None
+
+
+def parse_datetime_safely(value):
+    """
+    Parse datetime string with multiple format attempts.
+
+    Args:
+        value: Value to parse
+
+    Returns:
+        datetime or None: Parsed datetime or None if parsing fails
+    """
+    if pd.isna(value) or not value or value in ['NA', 'nan', 'None', 'NaN']:
+        return None
+
+    # Convert to string if not already
+    if not isinstance(value, str):
+        value = str(value)
+
+    # Try different formats
+    formats = [
+        '%d/%m/%Y %H:%M:%S',
+        '%d/%m/%Y %H:%M',
+        '%Y-%m-%d %H:%M:%S',
+        '%Y-%m-%d %H:%M',
+        '%d-%m-%Y %H:%M:%S',
+        '%d-%m-%Y %H:%M'
+    ]
+
+    for fmt in formats:
+        try:
+            return pd.to_datetime(value, format=fmt)
+        except:
+            continue
+
+    # Try pandas default parsing as last resort
+    try:
+        return pd.to_datetime(value, errors='coerce')
+    except:
+        return None
+
+
+def process_lat_lng(row, column_name='Lat Lng'):
+    """
+    Process latitude and longitude from combined format.
+
+    Args:
+        row: DataFrame row
+        column_name: Name of the column containing the combined lat/lng
+
+    Returns:
+        tuple: (latitude, longitude) as floats or (None, None) if parsing fails
+    """
+    if column_name not in row or pd.isna(row[column_name]):
+        return None, None
+
+    value = str(row[column_name])
+
+    # Check for space-separated values
+    parts = value.strip().split()
+    if len(parts) >= 2:
+        try:
+            lat = float(parts[0])
+            lng = float(parts[1])
+            return lat, lng
+        except:
+            pass
+
+    return None, None
+
+
+def create_cpue_data(gear_data, capture_data):
+    """
+    Create CPUE data by processing gear deployments and captures.
+
+    Args:
+        gear_data (pd.DataFrame): DataFrame with gear data
+        capture_data (pd.DataFrame): DataFrame with capture data
+
+    Returns:
+        pd.DataFrame: Processed CPUE data
+    """
+    if gear_data.empty:
+        print("No gear data available")
+        return pd.DataFrame()
+
+    # Filter the gear data to only include deployments and collections
+    if 'Activity' in gear_data.columns:
+        # Convert to string type to ensure consistent comparison
+        gear_data['Activity'] = gear_data['Activity'].astype(str)
+
+        deployments = gear_data[gear_data['Activity'].str.strip() == 'Deployment'].copy()
+        collections = gear_data[gear_data['Activity'].str.strip() == 'Collection'].copy()
+
+        print(f"Found {len(deployments)} deployment events")
+        print(f"Found {len(collections)} collection events")
+
+        # Create output records
+        cpue_records = []
+
+        # Process each deployment
+        for _, deployment in deployments.iterrows():
+            record = {}
+
+            # Extract deployment information
+            record['dep_date_time'] = deployment.get('DateTime')
+            record['dep_type'] = deployment.get('Type')
+            record['dep_drumline_number'] = deployment.get('Drumline Number')
+            record['dep_longline_letter'] = deployment.get('Longline Letter')
+            record['dep_longline_number'] = deployment.get('Longline Number')
+            record['dep_bait'] = deployment.get('Baits')
+            record['dep_bait_on_off'] = deployment.get('Bait On/Off')
+            record['dep_longline_bottom_surface'] = deployment.get('Longline Bottom/Surface')
+            record['dep_bottom_salinity'] = deployment.get('Bottom Salinity')
+            record['dep_bottom_temperature'] = deployment.get('Bottom Temperature')
+            record['dep_sea_surface_salinity'] = deployment.get('Sea-Surface Salinity')
+            record['dep_sea_surface_temperature'] = deployment.get('Sea-Surface Temperature')
+            record['dep_handline_anchoring_motoring'] = deployment.get('Handline Anchoring/Motoring')
+            record['comments'] = deployment.get('comments')
+
+            # Extract site from source file
+            if 'source_file' in deployment:
+                record['source_file'] = deployment['source_file']
+                record['site'] = extract_site_from_filename(deployment['source_file'])
+
+            # Process latitude and longitude
+            lat, lng = process_lat_lng(deployment)
+            record['dep_lat'] = lat
+            record['dep_lon'] = lng
+
+            # Find matching collection
+            matching_collection = None
+
+            # Create a gear identifier to match deployments with collections
+            gear_id = None
+
+            # For drumlines
+            if not pd.isna(deployment.get('Drumline Number')) and deployment.get('Type') == 'Drumline':
+                gear_id = ('Drumline', str(deployment['Drumline Number']))
+
+            # For longlines
+            elif not pd.isna(deployment.get('Longline Letter')) and not pd.isna(deployment.get('Longline Number')):
+                gear_id = ('Longline', str(deployment['Longline Letter']) + str(deployment['Longline Number']))
+
+            # If we have a valid gear ID, try to find a matching collection
+            if gear_id:
+                # Filter collections by type
+                type_matches = collections[collections['Type'] == gear_id[0]]
+
+                # Match by specific gear identifier
+                if gear_id[0] == 'Drumline':
+                    # Convert to string for safe comparison
+                    type_matches['Drumline Number'] = type_matches['Drumline Number'].astype(str)
+                    matches = type_matches[type_matches['Drumline Number'] == gear_id[1]]
+                else:  # Longline
+                    matches = type_matches[
+                        (type_matches['Longline Letter'].astype(str) == gear_id[1][0]) &
+                        (type_matches['Longline Number'].astype(str) == gear_id[1][1:])
+                        ]
+
+                # If we found matches, get the first one that's after the deployment
+                if not matches.empty:
+                    # Parse dates
+                    dep_time = parse_datetime_safely(deployment['DateTime'])
+
+                    # If we can parse the deployment time, find collections after it
+                    if dep_time:
+                        matches['col_time'] = matches['DateTime'].apply(parse_datetime_safely)
+                        valid_matches = matches[matches['col_time'] > dep_time]
+
+                        # Get the first collection after deployment
+                        if not valid_matches.empty:
+                            matching_collection = valid_matches.iloc[0]
+
+            # Add collection date if we found a match
+            if matching_collection is not None:
+                record['col_date_time'] = matching_collection.get('DateTime')
+
+                # Look for a matching capture with the same gear ID
+                if not capture_data.empty:
+                    # Filter captures by gear type and number
+                    if gear_id[0] == 'Drumline':
+                        captures = capture_data[
+                            (capture_data['Capture Method'] == 'Drumline') &
+                            (capture_data['Drumline Number'].astype(str) == gear_id[1])
+                            ]
+                    else:  # Longline
+                        captures = capture_data[
+                            (capture_data['Capture Method'] == 'Longline') &
+                            (capture_data['Longline Letter'].astype(str) == gear_id[1][0]) &
+                            (capture_data['Longline Number'].astype(str) == gear_id[1][1:])
+                            ]
+
+                    # Get the first matching capture
+                    if not captures.empty:
+                        capture = captures.iloc[0]
+                        record['visual_tag'] = capture.get('Spagetti')
+                        record['event'] = capture.get('Capture State')
+
+            # Add the record to our output list
+            cpue_records.append(record)
+
+        # Create DataFrame from records
+        if cpue_records:
+            return pd.DataFrame(cpue_records)
+
+    print("No valid deployment data found")
+    return pd.DataFrame()
+
+
+def map_columns(df, column_mapping):
+    """
+    Map DataFrame columns according to a mapping dictionary.
+
+    Args:
+        df (pd.DataFrame): DataFrame to map
+        column_mapping (dict): Dictionary mapping original column names to new names
+
+    Returns:
+        pd.DataFrame: DataFrame with mapped columns
+    """
+    # Get the original columns that exist in the DataFrame
+    existing_columns = set(df.columns)
+
+    # Create mapping for columns that exist
+    valid_mapping = {
+        old: new for old, new in column_mapping.items()
+        if old in existing_columns
+    }
+
+    # Apply the mapping
+    if valid_mapping:
+        df = df.rename(columns=valid_mapping)
+        print(f"Mapped {len(valid_mapping)} columns")
+    else:
+        print("Warning: No columns matched the mapping dictionary")
+
+    return df
+
+
+def main(args):
+    """
+    Main function to process shark CPUE data.
+
+    Args:
+        args: Command line arguments
+    """
+    delphis_dir = args.delphis_dir
+    cpue_dict_file = args.cpue_dict
+    cpue_list_file = args.cpue_list
+    output_file = args.output_file
+    readonly = args.readonly
+
+    print(f"Starting processing with parameters:")
+    print(f"  Delphis directory: {delphis_dir}")
+    print(f"  CPUE dictionary: {cpue_dict_file}")
+    print(f"  CPUE list: {cpue_list_file}")
+    print(f"  Output file: {output_file}")
+    print(f"  Readonly mode: {readonly}")
+
+    # Load mapping files
+    try:
+        cpue_dict_df = pd.read_csv(cpue_dict_file)
+        cpue_list_df = pd.read_csv(cpue_list_file)
+
+        # Create mapping dictionary
+        column_mapping = dict(zip(cpue_dict_df.iloc[:, 0], cpue_dict_df.iloc[:, 1]))
+        print(f"Loaded column mapping with {len(column_mapping)} entries")
+    except Exception as e:
+        print(f"Error loading mapping files: {e}")
+        return
+
+    # Process all files in the directory
+    sections_data = process_directory(delphis_dir)
+
+    # Create CPUE data from the sections
+    gear_data = sections_data.get('Megalodon Gear', pd.DataFrame())
+    capture_data = sections_data.get('Megalodon Capture', pd.DataFrame())
+
+    # Generate CPUE data from gear and capture information
+    cpue_data = create_cpue_data(gear_data, capture_data)
+
+    if cpue_data.empty:
+        print("No CPUE data generated. Exiting.")
+        return
+
+    # Process dates for consistent format
+    for date_column in ['dep_date_time', 'col_date_time']:
+        if date_column in cpue_data.columns:
+            # Convert to datetime
+            cpue_data[f'{date_column}_dt'] = cpue_data[date_column].apply(parse_datetime_safely)
+
+            # Format as dd/mm/yyyy hh:mm
+            mask = cpue_data[f'{date_column}_dt'].notna()
+            cpue_data.loc[mask, date_column] = cpue_data.loc[mask, f'{date_column}_dt'].dt.strftime('%d/%m/%Y %H:%M')
+
+            # Drop temporary column
+            cpue_data = cpue_data.drop(columns=[f'{date_column}_dt'])
+
+    # Process visual tags if present
+    if 'visual_tag' in cpue_data.columns:
+        # Clean the visual tag column
+        cpue_data['visual_tag'] = cpue_data['visual_tag'].astype(str)
+        cpue_data = cpue_data[~cpue_data['visual_tag'].str.contains('NA|nan|None|NaN', case=False)]
+
+        # Extract numeric portion if mixed with text
+        cpue_data['visual_tag'] = cpue_data['visual_tag'].str.extract('(\d+)', expand=False)
+        cpue_data = cpue_data.dropna(subset=['visual_tag'])
+
+        # Convert to integer if possible
+        try:
+            cpue_data['visual_tag'] = cpue_data['visual_tag'].astype(int)
+            print(f"Converted {len(cpue_data)} visual_tag values to integer")
+        except Exception as e:
+            print(f"Warning: Could not convert visual_tag to integer: {e}")
+
+    # Get expected columns from CPUE list
+    expected_columns = list(cpue_list_df.iloc[:, 0])
+
+    # Add source_file column if not in expected columns (for debugging)
+    if 'source_file' in cpue_data.columns and 'source_file' not in expected_columns:
+        expected_columns.append('source_file')
+
+    # Create final output with expected columns
+    final_columns = [col for col in expected_columns if col in cpue_data.columns]
+    if len(final_columns) < len(expected_columns):
+        missing = set(expected_columns) - set(final_columns)
+        print(f"Warning: Missing {len(missing)} columns in output: {', '.join(missing)}")
+
+    # Create final output DataFrame
+    final_table = cpue_data[final_columns].copy()
+
+    # Convert numeric columns to appropriate types
+    numeric_columns = [
+        'dep_lat', 'dep_lon', 'dep_drumline_number', 'dep_longline_number',
+        'dep_bottom_salinity', 'dep_bottom_temperature',
+        'dep_sea_surface_salinity', 'dep_sea_surface_temperature'
+    ]
+
+    for col in numeric_columns:
+        if col in final_table.columns:
+            final_table[col] = pd.to_numeric(final_table[col], errors='coerce')
+
+    # Save to file
+    if not final_table.empty:
+        try:
+            final_table.to_csv(output_file, index=False, float_format='%.6f')
+            print(f"Successfully saved {len(final_table)} rows to {output_file}")
+        except Exception as e:
+            print(f"Error saving output file: {e}")
+    else:
+        print("No data to save")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process shark CPUE data")
+    parser.add_argument("delphis_dir", type=str, help="Path to directory with Delphis files")
+    parser.add_argument("cpue_dict", type=str, help="Path to column mapping dictionary file")
+    parser.add_argument("cpue_list", type=str, help="Path to output column list file")
+    parser.add_argument("output_file", type=str, help="Path to output file")
+    parser.add_argument("--readonly", action="store_true", help="Do not modify input files")
+
+    args = parser.parse_args(sys.argv[1:])
+    main(args)
