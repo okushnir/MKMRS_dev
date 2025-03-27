@@ -346,35 +346,6 @@ def process_directory(directory, target_section, filter_column, capture_dict_df,
         cpue_data['dep_type'] = cpue_data['dep_type_y'].combine_first(cpue_data['dep_type_x'])
         cpue_data = cpue_data.drop(columns=["col_date_time_y", "col_date_time_x", "dep_type_y", "dep_type_x"])
         cpue_data["event"] = cpue_data["visual_tag"]
-
-        # # Format tag_date before saving
-        # if 'dep_date_time' in cpue_data.columns:
-        #     try:
-        #         # First ensure tag_date is in datetime format
-        #         if not pd.api.types.is_datetime64_any_dtype(cpue_data['dep_date_time']):
-        #             # If tag_date is still a string, convert it to datetime
-        #             cpue_data['dep_date_time'] = cpue_data['dep_date_time'].apply(parse_datetime_safely)
-        #
-        #         # Format to dd/mm/yyyy hh:mm
-        #         cpue_data['dep_date_time'] = cpue_data['dep_date_time'].dt.strftime('%d/%m/%Y %H:%M')
-        #         print("dep_date_time column formatted as dd/mm/yyyy hh:mm")
-        #     except Exception as e:
-        #         print(f"Warning: Could not format dep_date_time column: {e}")
-        #
-        # if 'col_date_time' in cpue_data.columns:
-        #     try:
-        #         # First ensure tag_date is in datetime format
-        #         if not pd.api.types.is_datetime64_any_dtype(cpue_data['col_date_time']):
-        #             # If tag_date is still a string, convert it to datetime
-        #             cpue_data['col_date_time'] = cpue_data['col_date_time'].apply(parse_datetime_safely)
-        #
-        #         # Format to dd/mm/yyyy hh:mm
-        #         cpue_data['col_date_time'] = cpue_data['col_date_time'].dt.strftime('%d/%m/%Y %H:%M')
-        #         print("col_date_time column formatted as dd/mm/yyyy hh:mm")
-        #     except Exception as e:
-        #         print(f"Warning: Could not format col_date_time column: {e}")
-
-                # Save to file
         if not cpue_data.empty:
             try:
                 columns_list = cpue_list_df["sharks_CPUE"].to_list()
@@ -457,73 +428,6 @@ def parse_datetime_safely(value, day_first=True):
         return pd.NaT
 
 
-def replace_numbers_with_yes(value):
-    """
-    Replace numeric values with "Yes".
-
-    Args:
-        value: Value to check
-
-    Returns:
-        "Yes" if numeric, original value otherwise
-    """
-    if pd.isna(value):
-        return value
-
-    try:
-        float(value)
-        return "Yes"
-    except (ValueError, TypeError):
-        return value
-
-
-def deduplicate_data(df, key_column):
-    """
-    Remove duplicate rows based on a key column.
-
-    Args:
-        df (pd.DataFrame): DataFrame to deduplicate
-        key_column (str): Column to use as the unique key
-
-    Returns:
-        pd.DataFrame: Deduplicated DataFrame
-    """
-    if key_column not in df.columns:
-        print(f"Warning: Key column '{key_column}' not found for deduplication")
-        return df
-
-    # Count duplicate rows
-    duplicates = df.duplicated(subset=[key_column], keep=False)
-    duplicate_count = duplicates.sum()
-
-    if duplicate_count == 0:
-        print("No duplicates found")
-        return df
-
-    print(f"Found {duplicate_count} duplicate rows based on {key_column}")
-
-    # Keep the most complete record for each key
-    def count_non_null(row):
-        return row.count()
-
-    # Group by key and find the row with the most non-null values for each group
-    grouped = df.groupby(key_column)
-    indices = []
-
-    for name, group in grouped:
-        group['non_null_count'] = group.apply(count_non_null, axis=1)
-        indices.append(group['non_null_count'].idxmax())
-
-    deduped_df = df.loc[indices].copy()
-
-    # Remove the temporary count column
-    if 'non_null_count' in deduped_df.columns:
-        deduped_df = deduped_df.drop(columns=['non_null_count'])
-
-    print(f"After deduplication: {len(deduped_df)} unique rows")
-    return deduped_df
-
-
 def determine_site_from_coordinates(lat, lon):
     """
     Determine site name based on latitude and longitude coordinates.
@@ -566,10 +470,6 @@ def determine_site_from_coordinates(lat, lon):
     else:
         return 'Unknown'
 
-
-# Example usage:
-# site = determine_site_from_coordinates(32.46, 34.88)  # Should return 'Hadera'
-# site = determine_site_from_coordinates(31.78, 34.63)  # Should return 'Ashdod Power Plant'
 
 def create_tag_dataframe():
     """
