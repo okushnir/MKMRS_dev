@@ -121,12 +121,15 @@ def parse_guitar_file(filepath):
 
     measurements = []
     measurement_count = 1
+    env_data_found = False  # <-- ADD THIS FLAG
 
     for line in lines:
-        if line.startswith("ENV_DATA:"):
+        if line.startswith("ENV_DATA:") and not env_data_found:
+            env_data_found = True  # <-- PROCESS ONLY THE FIRST BLOCK
             env_data = json.loads(line[len("ENV_DATA:"):])
             env_vals = env_data.get("environmentalDataValues", {})
-            shared_mid = define_unique_id(start_date, location_lat, location_lng, f"MEAS_{measurement_count:03d}", prefix="")
+            shared_mid = define_unique_id(start_date, location_lat, location_lng, f"MEAS_{measurement_count:03d}",
+                                          prefix="")
             measurement_count += 1
             for key, (mtype, unit, method) in env_mapping.items():
                 if key in env_vals:
@@ -166,7 +169,7 @@ def parse_guitar_file(filepath):
     )
 
 if __name__ == "__main__":
-    dir_path = "/Users/odedkushnir/MKMRS/Guitarfish/Efrat/"  # replace with your actual path
+    dir_path = "/Users/odedkushnir/MKMRS/Guitarfish/Efrat/" 
     core_df, occ_df, meas_df = parse_guitar_file(dir_path + "20250311_0632_danarein.guitarfish.txt")
     core_df.to_csv(dir_path + "core_events.csv", index=False)
     occ_df.to_csv(dir_path + "occurrences.csv", index=False)
