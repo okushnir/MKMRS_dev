@@ -112,10 +112,10 @@ def parse_guitar_file(filepath):
             count += 1
     # --- Extended_MeasurementsOrFacts table ---
     env_mapping = {
-        "envTemp": ("air temperature", "°C", "Thermometer"),
-        "waterTemp": ("water temperature", "°C", "CTD sensor"),
+        "envTemp": ("air temperature", "C", "Thermometer"),
+        "waterTemp": ("water temperature", "C", "CTD sensor"),
         "waveHeight": ("wave height", "m", "Visual estimation"),
-        "windDir": ("wind direction", "°C", "Weather station"),
+        "windDir": ("wind direction", "C", "Weather station"),
         "windSpeed": ("wind speed", "m/s", "Weather station"),
     }
 
