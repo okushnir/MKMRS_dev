@@ -68,54 +68,59 @@ def parse_guitar_file(filepath):
         "remarks": f"Total rhini: {rhini_total}, crab: {crab_total}, jellyfish: {jelly_total}"
     }])
 
-    # Occurrences
+    # --- Guitarfish_Occurrences
     occurrences = []
     count = 1
     for line in lines:
         if line.startswith("OBSERVATION:"):
             obs = json.loads(line[12:])
             lat, lng = obs["latLng"]
+            date_str = obs.get("dateTime")
             oid = define_unique_id(start_date, lat, lng, f"{field_number}_{count:03d}", prefix="")
             occurrences.append({
                 "occurrenceID": oid,
                 "eventID": event_id,
                 "scientificName": "Glaucostegus cemiculus",
                 "taxonRank": "species",
+                "individualCount": obs.get("rhiniCount", 0),
                 "decimalLatitude": lat,
                 "decimalLongitude": lng,
                 "occurrenceStatus": "present",
-                "individualCount": obs.get("rhiniCount", 0),
-                # "organismQuantityType": "individuals",
+                "organismQuantityType": "individuals",
                 # "organismQuantity": obs.get("rhiniCount", 0),
                 "recordedBy": recorded_by,
-                "occurrenceRemarks": f"Other counts - crab: {obs.get('crabCount', 0)}, jellyfish: {obs.get('jellyfishCount', 0)}"
+                "occurrenceRemarks": f"Other counts - crab: {obs.get('crabCount', 0)}, jellyfish: {obs.get('jellyfishCount', 0)}",
+                "modified": date_str
             })
             count += 1
         elif line.startswith("LOCATION:"):
             loc = json.loads(line[9:])
             lat, lng = loc["latLng"]
+            date_str = loc.get("dateTime")
             oid = define_unique_id(start_date, lat, lng, f"{field_number}_{count:03d}", prefix="")
             occurrences.append({
                 "occurrenceID": oid,
                 "eventID": event_id,
                 "scientificName": "Glaucostegus cemiculus",
                 "taxonRank": "species",
+                "individualCount": 0,
                 "decimalLatitude": lat,
                 "decimalLongitude": lng,
                 "occurrenceStatus": "absent",
-                "individualCount": 0,
-                # "organismQuantityType": "individuals",
+                "organismQuantityType": "individuals",
                 # "organismQuantity": 0,
                 "recordedBy": recorded_by,
-                "occurrenceRemarks": "No observation recorded"
+                "occurrenceRemarks": "No observation recorded",
+                "modified": date_str
             })
             count += 1
+
     # --- Extended_MeasurementsOrFacts table ---
     env_mapping = {
-        "envTemp": ("air temperature", "C", "Thermometer"),
-        "waterTemp": ("water temperature", "C", "CTD sensor"),
-        "waveHeight": ("wave height", "m", "Visual estimation"),
-        "windDir": ("wind direction", "C", "Weather station"),
+        "envTemp": ("air temperature", "celsius", "Thermometer"),
+        "waterTemp": ("water temperature", "celsius", "CTD sensor"),
+        "waveHeight": ("wave height", "meter", "Visual estimation"),
+        "windDir": ("wind direction", "celsius", "Weather station"),
         "windSpeed": ("wind speed", "m/s", "Weather station"),
     }
 
