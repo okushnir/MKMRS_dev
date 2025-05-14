@@ -55,11 +55,21 @@ class GLATOSPipeline:
 
     def run_r_script(self, r_code):
         """Execute R code."""
-        temp_script = "temp_script.R"
+        import tempfile
+
+        # Create temp file in a writable directory
         try:
+            # Try to use system temp directory first
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.R', delete=False) as temp_file:
+                temp_script = temp_file.name
+                temp_file.write(r_code)
+        except:
+            # Fallback to current working directory if temp fails
+            temp_script = os.path.expanduser("~/temp_script.R")
             with open(temp_script, 'w') as f:
                 f.write(r_code)
 
+        try:
             # Use Rscript instead of R
             rscript_path = self.r_path.replace('/R', '/Rscript') if self.r_path.endswith('/R') else 'Rscript'
             result = subprocess.run([rscript_path, temp_script], capture_output=True, text=True)
@@ -77,8 +87,12 @@ class GLATOSPipeline:
             print(f"Error: {e}")
             return False
         finally:
-            if os.path.exists(temp_script):
-                os.remove(temp_script)
+            # Clean up temp file
+            try:
+                if os.path.exists(temp_script):
+                    os.remove(temp_script)
+            except:
+                pass  # Don't fail if we can't remove temp file
 
     def combine_timestamps(self, input_file, output_file):
         """Combine date and time columns."""
@@ -324,7 +338,7 @@ class GLATOSPipeline:
         print("Summary report saved!")
         print("=== Test Complete ===")
         print("Your converted file works with GLATOS functions!")
-        print("Generated files:")
+        print("enerated files:")
         print("  - detection_timeline.png")
         print("  - glatos_test_summary.txt")
         '''
@@ -464,7 +478,7 @@ class GLATOSPipeline:
         print("=" * 60)
 
         # Stage 1: Combine timestamps
-        print("\n📅 Stage 1: Combining Date/Time Columns")
+        print("📅 Stage 1: Combining Date/Time Columns")
         try:
             self.combine_timestamps(input_file, combined_file)
             print(f"✅ Stage 1 complete: {combined_file}")
@@ -473,7 +487,7 @@ class GLATOSPipeline:
             return False
 
         # Stage 2: Convert to GLATOS format
-        print("\n🔄 Stage 2: Converting to GLATOS Format")
+        print("🔄 Stage 2: Converting to GLATOS Format")
         if self.convert_to_glatos(combined_file, glatos_file):
             print(f"✅ Stage 2 complete: {glatos_file}")
         else:
@@ -521,7 +535,7 @@ def main():
     success = pipeline.process_file(args.input, args.output, args.time_filter)
 
     total_time = time.time() - start_time
-    print(f"\nTotal execution time: {total_time:.1f} seconds")
+    print(f"Total execution time: {total_time:.1f} seconds")
 
     if success:
         print("✅ Pipeline completed successfully!")
