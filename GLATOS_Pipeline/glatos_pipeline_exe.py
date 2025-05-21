@@ -53,6 +53,43 @@ class GLATOSPipeline:
 
         raise RuntimeError("R not found. Please install R and make sure it's in PATH.")
 
+    def connect_to_amazon_db(self, dbname, host, port, username, password):
+        """
+        Establishes a connection to an Amazon RDS database.
+
+        Args:
+            dbname (str): The name of the database to connect to
+            host (str): The hostname of the Amazon RDS instance
+            port (int): The port number to connect on
+            username (str): The username for authentication
+            password (str): The password for authentication
+
+        Returns:
+            connection: A database connection object
+        """
+        try:
+            # Try to import the required PostgreSQL module
+            try:
+                import psycopg2
+            except ImportError:
+                print("Installing psycopg2...")
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "psycopg2-binary"])
+                import psycopg2
+
+            # For PostgreSQL
+            conn = psycopg2.connect(
+                dbname=dbname,
+                host=host,
+                port=port,
+                user=username,
+                password=password
+            )
+            print("Connection to Amazon RDS established successfully!")
+            return conn
+        except Exception as e:
+            print(f"Error connecting to Amazon RDS: {e}")
+            return None
+
     def run_r_script(self, r_code):
         """Execute R code."""
         import tempfile
@@ -456,7 +493,118 @@ class GLATOSPipeline:
 
         return self.run_r_script(r_code)
 
-    def process_file(self, input_file, output_dir=None, time_filter=3600):
+    def compare_tags_with_db(self, filtered_file, db_params):
+        """
+        Compare animal_id from processed CSV with acoustic_tag_id from sharks_unique table.
+        Filter out tags that aren't in the database and create a filtered output file.
+
+        Args:
+            filtered_file (str): Path to the filtered CSV file
+            db_params (dict): Database connection parameters
+
+        Returns:
+            bool: Success status
+        """
+        print("\n🔄 Comparing detected tags with database records...")
+
+        try:
+            # Read the CSV file
+            df = pd.read_csv(filtered_file)
+            detected_tags = df['animal_id'].unique()
+            print(f"Found {len(detected_tags)} unique animal IDs in the processed data")
+
+            # Connect to the database
+            conn = self.connect_to_amazon_db(
+                dbname=db_params['dbname'],
+                host=db_params['host'],
+                port=db_params['port'],
+                username=db_params['username'],
+                password=db_params['password']
+            )
+
+            if not conn:
+                return False
+
+            # Create cursor and execute query
+            cursor = conn.cursor()
+            cursor.execute("SELECT acoustic_tag_id FROM sharks_unique")
+            db_tags = [row[0] for row in cursor.fetchall()]
+
+            print(f"Found {len(db_tags)} unique acoustic tag IDs in database")
+
+            # Convert to sets for comparison
+            detected_set = set(str(tag) for tag in detected_tags)
+            db_set = set(str(tag) for tag in db_tags)
+
+            # Find matches and mismatches
+            matches = detected_set.intersection(db_set)
+            not_in_db = detected_set - db_set
+
+            # Create results directory
+            output_dir = Path(filtered_file).parent
+            results_file = output_dir / "tag_comparison_results.csv"
+
+            # Create the filtered output filename
+            filtered_file_path = Path(filtered_file)
+            base_name = filtered_file_path.stem.replace("_filtered", "")
+            filtered_output_file = output_dir / f"{base_name}_db_filtered.csv"
+
+            # Generate comparison results
+            print("\n📊 Tag Comparison Results:")
+            print(
+                f"✓ Matching tags: {len(matches)} ({round(len(matches) / len(detected_set) * 100 if len(detected_set) > 0 else 0, 1)}%)")
+            print(
+                f"✗ Tags not in database: {len(not_in_db)} ({round(len(not_in_db) / len(detected_set) * 100 if len(detected_set) > 0 else 0, 1)}%)")
+
+            # Save detailed results to CSV
+            results = []
+            for tag in detected_tags:
+                results.append({
+                    'animal_id': tag,
+                    'in_database': str(tag) in db_set,
+                    'detection_count': len(df[df['animal_id'] == tag])
+                })
+
+            results_df = pd.DataFrame(results)
+            results_df.sort_values('detection_count', ascending=False, inplace=True)
+            results_df.to_csv(results_file, index=False)
+
+            print(f"\n📄 Detailed comparison saved to: {results_file}")
+
+            # Filter out tags that aren't in the database
+            print("\n🔍 Filtering out tags not found in database...")
+            original_count = len(df)
+
+            # Convert tags to strings for comparison
+            str_db_tags = set(str(tag) for tag in db_tags)
+            df['str_animal_id'] = df['animal_id'].astype(str)
+
+            # Filter dataframe to keep only tags that are in the database
+            df_filtered = df[df['str_animal_id'].isin(str_db_tags)].copy()
+            df_filtered.drop('str_animal_id', axis=1, inplace=True)
+
+            # Save filtered dataframe
+            df_filtered.to_csv(filtered_output_file, index=False)
+
+            # Print filtering results
+            removed_count = original_count - len(df_filtered)
+            print(
+                f"Removed {removed_count} detections ({round(removed_count / original_count * 100 if original_count > 0 else 0, 1)}%)")
+            print(
+                f"Kept {len(df_filtered)} detections ({round(len(df_filtered) / original_count * 100 if original_count > 0 else 0, 1)}%)")
+            print(f"Filtered output saved to: {filtered_output_file}")
+
+            # Close connection
+            cursor.close()
+            conn.close()
+
+            return True
+
+        except Exception as e:
+            print(f"Error comparing tags with database: {e}")
+            return False
+
+    def process_file(self, input_file, output_dir=None, time_filter=3600, db_params=None):
         """Run the complete pipeline."""
         input_path = Path(input_file)
         if not output_dir:
@@ -471,6 +619,7 @@ class GLATOSPipeline:
         combined_file = output_dir / f"{base_name}_dates.csv"
         glatos_file = output_dir / f"{base_name}_dates_glatos_format.csv"
         filtered_file = output_dir / f"{base_name}_dates_glatos_format_filtered.csv"
+        final_output_file = filtered_file  # Default to noise-filtered file
 
         print("🦈 Starting GLATOS Pipeline")
         print(f"Input: {input_file}")
@@ -510,8 +659,21 @@ class GLATOSPipeline:
             print("❌ Stage 4 failed")
             return False
 
+        # Stage 5: Compare with database and filter (only if db_params provided)
+        if db_params:
+            print("🔍 Stage 5: Comparing with Amazon RDS Database and Filtering")
+            if self.compare_tags_with_db(filtered_file, db_params):
+                # Update the final output file to be the database-filtered file
+                db_filtered_file = output_dir / f"{base_name}_dates_glatos_format_db_filtered.csv"
+                if db_filtered_file.exists():
+                    final_output_file = db_filtered_file
+                print(f"✅ Stage 5 complete")
+            else:
+                print("❌ Stage 5 failed")
+                # Continue pipeline and use the noise-filtered file as final output
+
         print("🎉 Pipeline completed successfully!")
-        print(f"Final output: {filtered_file}")
+        print(f"Final output: {final_output_file}")
         return True
 
 
@@ -523,6 +685,13 @@ def main():
     parser.add_argument("--time-filter", "-t", type=int, default=3600,
                         help="Time filter for noise reduction (seconds)")
 
+    # Add Amazon RDS connection arguments
+    parser.add_argument("--db-host", default="morriskahnmarineresearchdb.cfhx32jrsn76.us-east-2.rds.amazonaws.com",help="Amazon RDS host")
+    parser.add_argument("--db-port", type=int, default=5432, help="Amazon RDS port (default: 5432)")
+    parser.add_argument("--db-name", default="MKMR_DB", help="Amazon RDS database name")
+    parser.add_argument("--db-user", default="MorrisKahnMarineResearch", help="Amazon RDS username")
+    parser.add_argument("--db-pass", default="MKMR080719", help="Amazon RDS password")
+
     args = parser.parse_args()
 
     if not Path(args.input).exists():
@@ -532,7 +701,19 @@ def main():
     pipeline = GLATOSPipeline()
     start_time = time.time()
 
-    success = pipeline.process_file(args.input, args.output, args.time_filter)
+    # Set up db_params if all required parameters are provided
+    db_params = None
+    if args.db_host and args.db_name and args.db_user and args.db_pass:
+        db_params = {
+            'host': args.db_host,
+            'port': args.db_port,
+            'dbname': args.db_name,
+            'username': args.db_user,
+            'password': args.db_pass
+        }
+        print("Amazon RDS connection parameters provided")
+
+    success = pipeline.process_file(args.input, args.output, args.time_filter, db_params)
 
     total_time = time.time() - start_time
     print(f"Total execution time: {total_time:.1f} seconds")
